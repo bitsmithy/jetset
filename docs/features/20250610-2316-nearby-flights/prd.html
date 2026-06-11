@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nearby Flights — PRD</title>
+<style>
+:root {
+  --font-body: 'Outfit', system-ui, sans-serif;
+  --font-mono: 'Space Mono', 'SF Mono', Consolas, monospace;
+  --bg: #f4f1ea;
+  --surface: #fffcf5;
+  --surface-elevated: #ffffff;
+  --border: rgba(0,0,0,0.08);
+  --border-bright: rgba(0,0,0,0.15);
+  --text: #1a1a2e;
+  --text-dim: #6b7280;
+  --accent: #b45309;
+  --accent-dim: rgba(180,83,9,0.1);
+  --tag-bg: #e8e5dc;
+  --card-radius: 8px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141414;
+    --surface: #1c1c1c;
+    --surface-elevated: #222222;
+    --border: rgba(255,255,255,0.06);
+    --border-bright: rgba(255,255,255,0.12);
+    --text: #e6edf3;
+    --text-dim: #8b949e;
+    --accent: #f59e0b;
+    --accent-dim: rgba(245,158,11,0.12);
+    --tag-bg: #2a2a2a;
+  }
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  padding: 2rem 1rem;
+}
+.container { max-width: 900px; margin: 0 auto; }
+
+/* Header */
+header { margin-bottom: 2.5rem; }
+header h1 {
+  font-size: 2.2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.3rem;
+}
+header .meta {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+header .pill {
+  display: inline-block;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  margin-top: 0.5rem;
+}
+
+/* Sections */
+section { margin-bottom: 2rem; }
+section h2 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin-bottom: 0.8rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 2px solid var(--border-bright);
+}
+
+/* Cards */
+.card-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  padding: 0.8rem 1rem;
+}
+.card.story {
+  padding-left: 1rem;
+  border-left: 3px solid var(--accent);
+}
+.card .num {
+  display: inline-block;
+  width: 1.8rem;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+/* Decision section */
+.decision {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  padding: 1rem;
+  margin-bottom: 0.8rem;
+}
+.decision h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+.decision p { font-size: 0.92rem; color: var(--text-dim); }
+
+/* Testing + Out of Scope */
+ul { list-style: none; }
+li {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  padding: 0.6rem 0.9rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.92rem;
+}
+li::before {
+  content: "·";
+  color: var(--accent);
+  font-weight: bold;
+  margin-right: 0.5rem;
+}
+
+/* Module Architecture */
+.module-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+.module {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--card-radius);
+  padding: 0.6rem 1rem;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 500;
+  min-width: 100px;
+}
+.module .sub {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--text-dim);
+  margin-top: 0.15rem;
+}
+.arrow { color: var(--text-dim); font-size: 1.2rem; padding: 0 0.2rem; }
+
+.tag {
+  display: inline-block;
+  background: var(--tag-bg);
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  margin-left: 0.3rem;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.5rem 0;
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>Nearby Flights — PRD</h1>
+  <div class="meta">2025-06-10 &middot; Jetset</div>
+  <div class="pill">Phase 2 &middot; PRD</div>
+</header>
+
+<section>
+  <h2>Problem</h2>
+  <p style="font-size:1rem;color:var(--text-dim);line-height:1.7">
+    I want to see live aircraft flying near my home displayed on a 64×32 LED matrix panel.
+    The display should feel like a miniature airport departure board — cycling through nearby
+    flights with their airline, flight number, route, altitude, and speed. When no flights are
+    nearby, I still want to see recent flights that passed through.
+  </p>
+</section>
+
+<section>
+  <h2>Solution</h2>
+  <p style="font-size:1rem;color:var(--text-dim);line-height:1.7">
+    A Python application that periodically fetches nearby aircraft from a flight tracking API,
+    renders each flight as a card on the LED matrix, and cycles through them. The display
+    uses a dot-matrix aesthetic with Departure Mono to match the departure-board feel.
+    The flight data source is swappable via an abstract interface — the first adapter targets
+    the OpenSky Network's free REST API.
+  </p>
+</section>
+
+<section>
+  <h2>Module Architecture</h2>
+  <div class="module-flow">
+    <div class="module">Config</div>
+    <span class="arrow">→</span>
+    <div class="module">Main Loop</div>
+    <span class="arrow">→</span>
+    <div class="module">Display</div>
+  </div>
+  <div class="module-flow" style="justify-content:center">
+    <div class="module" style="min-width:130px">
+      Flight API<br>
+      <span class="sub">⟨interface⟩</span>
+    </div>
+    <span class="arrow">→</span>
+    <div class="module" style="min-width:130px">
+      OpenSky Adapter
+    </div>
+  </div>
+  <div style="text-align:center;margin:0.5rem 0">
+    <span class="module" style="background:var(--accent-dim);border-color:var(--accent)">Flight Model</span>
+    <span style="color:var(--text-dim);margin:0 0.5rem">↔</span>
+    <span class="module" style="background:var(--accent-dim);border-color:var(--accent)">Flight Buffer</span>
+    <span style="color:var(--text-dim);margin:0 0.5rem">↔</span>
+    <span class="module" style="background:var(--accent-dim);border-color:var(--accent)">Renderer</span>
+  </div>
+</section>
+
+<section>
+  <h2>User Stories</h2>
+  <div class="card-grid">
+    <div class="card story"><span class="num">1.</span> As a Jetset owner, I want the display to show the airline and flight number of a nearby flight, along with the airline's logo.</div>
+    <div class="card story"><span class="num">2.</span> As a Jetset owner, I want the display to show the origin and destination airports.</div>
+    <div class="card story"><span class="num">3.</span> As a Jetset owner, I want the display to show the aircraft type (e.g., B738, A320).</div>
+    <div class="card story"><span class="num">4.</span> As a Jetset owner, I want the display to show altitude and speed.</div>
+    <div class="card story"><span class="num">5.</span> As a Jetset owner, I want the display to cycle through all nearby flights every few seconds.</div>
+    <div class="card story"><span class="num">6.</span> As a Jetset owner, I want the display to show recent flights when nothing is currently in range.</div>
+    <div class="card story"><span class="num">7.</span> As a Jetset owner, I want to configure home location and range via config file.</div>
+    <div class="card story"><span class="num">8.</span> As a Jetset owner, I want to configure refresh rate and cycle duration.</div>
+    <div class="card story"><span class="num">9.</span> As a developer, I want the flight data source to be swappable via an abstract interface.</div>
+    <div class="card story"><span class="num">10.</span> As a developer, I want the OpenSky adapter to handle API errors gracefully.</div>
+    <div class="card story"><span class="num">11.</span> As a Jetset owner, I want the display to use a pixel font that evokes airport departure boards.</div>
+    <div class="card story"><span class="num">12.</span> As a developer, I want tests for the flight model, API interface, and OpenSky adapter.</div>
+  </div>
+</section>
+
+<section>
+  <h2>Implementation Decisions</h2>
+
+  <div class="decision">
+    <h3>Flight API Interface</h3>
+    <p>Protocol with a single method: <code>fetch_nearby(lat, lon, range_mi) → list[Flight]</code>. The main loop receives the configured adapter via dependency injection — no direct imports of concrete adapters.</p>
+  </div>
+
+  <div class="decision">
+    <h3>OpenSky Adapter</h3>
+    <p>Uses the <code>states/all</code> REST endpoint with bounding-box parameters. State vectors are parsed into <code>Flight</code> objects. Flights below 1,000 ft are filtered. Callsign parsing extracts airline codes via prefix matching. Errors return an empty list — the display never crashes from a fetch failure.</p>
+  </div>
+
+  <div class="decision">
+    <h3>Flight Model</h3>
+    <p>Immutable dataclass with fields for airline, flight number, route, aircraft type, altitude, speed, track, vertical rate, and callsign. Display helpers derive formatted strings. <code>FlightBuffer</code> is a fixed-size ring buffer (default 5) with callsign deduplication.</p>
+  </div>
+
+  <div class="decision">
+    <h3>Renderer + Departure Mono</h3>
+    <p>The Departure Mono font (OTF) is rendered via Pillow at the appropriate pixel size, then blitted pixel-by-pixel onto the matrix canvas. This avoids BDF conversion and works identically on emulator and real hardware. Flight card layout uses orange, cyan, dim white, and green for visual hierarchy. Airline logo is displayed in the top-right corner.</p>
+  </div>
+
+  <div class="decision">
+    <h3>Airline Logos</h3>
+    <p>Sourced from github.com/sexym0nk3y/airline-logos (993 PNGs, 90×90 each, indexed by ICAO airline code). A setup script downloads and caches them locally. Each logo is downscaled to ~20×16 px and blitted into the top-right corner of the flight card. Missing logos are silently skipped.</p>
+  </div>
+
+  <div class="decision">
+    <h3>Display Abstraction</h3>
+    <p>Matrix creation tries <code>RGBMatrixEmulator</code> first, then <code>rgbmatrix</code>. Same code runs on emulator and Pi with zero changes.</p>
+  </div>
+
+  <div class="decision">
+    <h3>Configuration</h3>
+    <p>Single <code>config.yaml</code> with sections for home (lat, lon, range_mi), display (cols, rows, cycle_sec, refresh_sec), and api (source, credentials). Loaded into a frozen dataclass at startup.</p>
+  </div>
+
+  <div class="decision">
+    <h3>Empty State</h3>
+    <p>When no flights are in range, display recent flights from the history buffer. If buffer is empty (first run), show a static "NO DATA" message.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Testing Decisions</h2>
+  <ul>
+    <li><strong>Flight Model</strong> — construction, display label formatting, edge cases (missing fields, long strings)</li>
+    <li><strong>Flight API Interface</strong> — protocol enforcement (mock passes, missing method fails)</li>
+    <li><strong>OpenSky Adapter</strong> — real state vector parsing, partial/malformed data, error handling</li>
+  </ul>
+  <p style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-dim)">
+    Renderer and display testing is deferred — they require the emulator or hardware.
+  </p>
+</section>
+
+<section>
+  <h2>Out of Scope</h2>
+  <ul>
+    <li>Tracked / followed flight</li>
+    <li>Audio alerts</li>
+    <li>Web dashboard (beyond the emulator's built-in viewer)</li>
+    <li>Historical data storage</li>
+    <li>Multiple panel chains</li>
+    <li>ADS-B receiver integration</li>
+    <li>Mobile app or remote control</li>
+  </ul>
+</section>
+
+<hr>
+
+<footer style="font-size:0.8rem;color:var(--text-dim);text-align:center">
+  Jetset — Nearby Flights PRD &middot; 2025
+</footer>
+
+</div>
+</body>
+</html>

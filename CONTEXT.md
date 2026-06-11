@@ -16,8 +16,21 @@ Per-flight card visible on the matrix:
 - **Flight Number** (e.g., "2337")
 - **Route** (origin → destination airport codes, e.g., "SFO → LAX")
 - **Aircraft Type** (e.g., "B738")
-- **Metrics**: Altitude (ft), Speed (knots), Track/heading (°), Vertical Rate (ft/min)
+- **Metrics**: Altitude (ft), Speed (knots), Track (°), Vertical Rate (ft/min)
 - **Airline Logo** (optional): Small icon downsampled from airline-logos database
+
+## Track vs Heading
+
+- **Track**: The aircraft's actual path over the ground, measured in compass degrees. Affected by wind — differs from heading when there's a crosswind.
+- **Heading**: The direction the aircraft's nose is pointing. Not directly available from OpenSky — only Track is returned.
+
+## Flight Data Fields
+
+- **altitude**: Current altitude in feet.
+- **speed**: Current ground speed in knots.
+- **track**: Ground track in degrees (see Track vs Heading above).
+- **vertical_rate**: Rate of climb or descent in feet per minute. Positive = climbing, negative = descending.
+- **callsign**: The flight identifier broadcast by the aircraft (e.g., "UAL2337").
 
 ## Display Layout (64 columns × 32 rows)
 
