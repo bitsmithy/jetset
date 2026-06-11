@@ -1,6 +1,10 @@
 """Minimal emulator smoke test — proves the LED matrix emulator works."""
 
-import time
+from jetset.main import run_demo
+from jetset.models import Flight
+
+DISPLAY_WIDTH = 64
+DISPLAY_HEIGHT = 32
 
 
 def main() -> None:
@@ -11,28 +15,30 @@ def main() -> None:
         return
 
     options = RGBMatrixOptions()
-    options.cols = 64
-    options.rows = 32
+    options.cols = DISPLAY_WIDTH
+    options.rows = DISPLAY_HEIGHT
 
     matrix = RGBMatrix(options=options)
     canvas = matrix.CreateFrameCanvas()
+    flight = Flight(
+        callsign="UAL2337",
+        origin="SFO",
+        destination="LAX",
+        aircraft="A320",
+        altitude=35000,
+        speed=450,
+        track=270,
+        vertical_rate=1500,
+    )
 
-    # Draw some test pixels — red at top-left, green at top-right,
-    # blue at bottom-left, white at bottom-right
-    canvas.SetPixel(0, 0, 255, 0, 0)
-    canvas.SetPixel(63, 0, 0, 255, 0)
-    canvas.SetPixel(0, 31, 0, 0, 255)
-    canvas.SetPixel(63, 31, 255, 255, 255)
-
-    # Draw a diagonal line
-    for i in range(32):
-        canvas.SetPixel(i * 2, i, 255, 140, 0)
-
-    canvas = matrix.SwapOnVSync(canvas)
-
-    print("Emulator window open at http://localhost:8888/")
-    print("Running for 10 seconds then exiting...")
-    time.sleep(10)
+    try:
+        print("Press Ctrl-C to stop")
+        while True:
+            run_demo(matrix, canvas, flight)
+    except KeyboardInterrupt:
+        canvas.Clear()
+        matrix.SwapOnVSync(canvas)
+        print("\nShutdown.")
 
 
 if __name__ == "__main__":
