@@ -22,7 +22,7 @@ Per-flight card visible on the matrix:
 ## Track vs Heading
 
 - **Track**: The aircraft's actual path over the ground, measured in compass degrees. Affected by wind — differs from heading when there's a crosswind.
-- **Heading**: The direction the aircraft's nose is pointing. Not directly available from OpenSky — only Track is returned.
+- **Heading**: The direction the aircraft's nose is pointing. AeroAPI returns heading, not track — stored in the `track` field as an approximation.
 
 ## Flight Data Fields
 

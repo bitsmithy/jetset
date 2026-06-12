@@ -25,7 +25,7 @@ The Departure Mono OTF font is downloaded and rendered via Pillow at the appropr
 
 ---
 
-## Slice 2: Config + Flight API Interface + OpenSky adapter
+## Slice 2: Config + Flight API Protocol + AeroAPI adapter
 
 **Type:** AFK
 **Blocked by:** Slice 1 (model is needed as the return type)
@@ -33,19 +33,23 @@ The Departure Mono OTF font is downloaded and rendered via Pillow at the appropr
 
 ### What to build
 
-The `config.yaml` loader that reads home coordinates, range, display timing, and API settings into frozen dataclasses. The abstract Flight API interface (protocol class with a `fetch_nearby` method). The first concrete adapter for the OpenSky Network REST API, which queries the `states/all` endpoint with a bounding box derived from the configured home and range.
+The `config.yaml` loader that reads home coordinates, range, display timing, and API settings into frozen dataclasses. The abstract Flight API interface (protocol class with a `nearby_flights` method). The first concrete adapter for FlightAware AeroAPI, which queries the `/flights/search` endpoint with a bounding box derived from the configured home and range.
 
-The adapter parses OpenSky state vectors into `Flight` objects, filters out flights below 1,000 ft, extracts airline codes from callsigns and ICAO24 prefixes, and handles network errors gracefully (returning an empty list on failure).
+The adapter maps AeroAPI flight JSON into `Flight` objects (origin/destination/aircraft/altitude/speed/track), converts altitude from hundreds of feet to feet, and handles network errors gracefully (returning an empty list on failure).
 
 ### Acceptance criteria
 
-- [ ] Config loader reads `config.yaml` and returns frozen dataclasses with sensible defaults
-- [ ] Flight API protocol defines `fetch_nearby` with correct signature
-- [ ] OpenSky adapter implements the protocol and returns parsed `Flight` objects
-- [ ] Adapter handles timeouts, HTTP errors, and malformed responses without crashing
-- [ ] Tests verify the API interface contract, OpenSky state vector parsing, and error handling
-- [ ] `uv run ruff check src/` passes
-- [ ] `uv run pytest -v` passes for all tests
+- [x] Config loader reads `config.yaml` and returns frozen dataclasses with sensible defaults
+- [x] Flight API protocol defines `nearby_flights` with correct signature
+- [x] AeroAPI adapter implements the protocol and returns parsed `Flight` objects
+- [x] Adapter handles HTTP errors and JSON decode errors without crashing
+- [x] Tests verify the API interface contract, JSON-to-Flight conversion, and error handling
+- [x] `save_fixtures.py` script + `make fixtures` target for real API response fixtures
+- [x] API key via `AEROAPI_API_KEY` env var (loaded from `.env` via python-dotenv)
+- [x] `uv run ruff check src/` passes
+- [x] `uv run pytest -v` passes for all tests
+
+**Status:** ✅ Complete
 
 ---
 

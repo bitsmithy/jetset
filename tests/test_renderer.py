@@ -20,6 +20,7 @@ class TestBdfFont:
 class TestRenderFlightCard:
     def test_clears_canvas_before_drawing(self) -> None:
         from unittest.mock import MagicMock
+
         from jetset.models import Flight
         from jetset.renderer import render_flight_card
 
@@ -33,6 +34,7 @@ class TestRenderFlightCard:
 
     def test_renders_all_metric_pages_without_error(self) -> None:
         from RGBMatrixEmulator import RGBMatrix, RGBMatrixOptions
+
         from jetset.models import Flight
         from jetset.renderer import render_flight_card
 
