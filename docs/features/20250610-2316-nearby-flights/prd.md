@@ -6,7 +6,7 @@ I want to see live aircraft flying near my home displayed on a 64×32 LED matrix
 
 ## Solution
 
-A Python application that periodically fetches nearby aircraft from a flight tracking API, renders each flight as a card on the LED matrix, and cycles through them. The display uses a dot-matrix aesthetic with a pixel font (Departure Mono) to match the departure-board feel. The flight data source is swappable — the application talks to an abstract interface, with concrete adapters for each provider. The first adapter targets the OpenSky Network's free REST API.
+A Python application that periodically fetches nearby aircraft from a flight tracking API, renders each flight as a card on the LED matrix, and cycles through them. The display uses a dot-matrix aesthetic with a pixel font (5×7 BDF bitmap) to match the departure-board feel. The flight data source is swappable — the application talks to an abstract interface, with concrete adapters for each provider. The first adapter targets FlightAware AeroAPI.
 
 ## User Stories
 
@@ -19,44 +19,47 @@ A Python application that periodically fetches nearby aircraft from a flight tra
 7. As a Jetset owner, I want to configure my home location (latitude/longitude) and tracking range in a config file, so that I can set it up for my location.
 8. As a Jetset owner, I want to configure how often flight data is refreshed and how long each flight is shown, so that I can tune the pacing to my preference.
 9. As a developer, I want the flight data source to be swappable via an abstract interface, so that I can add support for other APIs (FlightAware, ADSB‑exchange, etc.) without changing the rest of the system.
-10. As a developer, I want the OpenSky adapter to handle API errors gracefully (timeouts, rate limits, network failures), so that the display continues working even when the API is unreachable.
+10. As a developer, I want adapters to handle API errors gracefully (timeouts, rate limits, network failures), so that the display continues working even when the API is unreachable.
 11. As a Jetset owner, I want the display to use a pixel font (Departure Mono) that evokes airport departure boards, so that the visual matches the theme.
-12. As a developer, I want tests for the flight model, the API interface, and the OpenSky adapter, so that I can verify core logic without the hardware.
+12. As a developer, I want tests for the flight model, the API interface, and data source adapters, so that I can verify core logic without the hardware.
 
 ## Implementation Decisions
 
 ### Flight API Interface
 
-A protocol/ABC with a single method: `fetch_nearby(lat, lon, range_mi) -> list[Flight]`. The main loop receives the configured adapter via dependency injection — it never imports an adapter directly.
+A protocol/ABC with a single method: `nearby_flights(lat, lon, range_mi, raw=False) -> Sequence[Flight]`. The main loop receives the configured adapter via dependency injection — it never imports an adapter directly. When `raw=True`, the adapter returns the full API response dict for fixture capture.
 
 The `Flight` data class is the shared contract between adapters and the renderer. All adapters normalise their API responses into this shape.
 
-### OpenSky Adapter
+### AeroAPI Adapter
 
-Uses the OpenSky Network's `states/all` REST endpoint with bounding-box parameters (`lamin`, `lamax`, `lomin`, `lomax`). The bounding box is derived from the home location and range using approximate latitude/longitude-per-mile conversions at 40°N.
+The first adapter targets FlightAware AeroAPI (`https://aeroapi.flightaware.com/aeroapi`). Authentication is via `x-apikey` header using an API key from the `AEROAPI_API_KEY` environment variable (loaded from `.env` via `python-dotenv`).
 
-State vectors are parsed into `Flight` objects. Flights below 1,000 ft altitude are filtered out (likely grounded or just landed). The callsign is parsed to extract an airline code and flight number where possible.
+Queries the `/flights/search` endpoint with `-latlong` bounding box query. Response is JSON with a `flights` array. Each flight object includes `ident`, `origin`/`destination` objects, `aircraft_type`, and `last_position` (altitude, groundspeed, heading).
 
-ICAO 24-bit address prefixes are mapped to common airline codes (UAL, AAL, SWA, DAL) as a fallback when the callsign doesn't encode the airline.
+Key conversions:
+- **altitude**: AeroAPI returns hundreds of feet → stored as feet (×100)
+- **groundspeed**: already in knots, stored as-is
+- **heading**: degrees (0–360), stored in the `track` field
+- **vertical_rate**: not currently populated (AeroAPI only has `altitude_change` as C/D/-)
 
-The adapter swallows exceptions (timeouts, HTTP errors) and returns an empty list — the display loop never crashes from a fetch failure.
+The adapter catches `requests.exceptions.RequestException` and `ValueError` (for JSON decode failures) and returns an empty list — the display loop never crashes from a fetch failure.
 
 ### Flight Model
 
-`Flight` is an immutable dataclass with fields: airline, flight_number, origin, destination, aircraft_type, altitude_ft, speed_kts, track, vert_rate_ftmin, callsign. Display helpers (`flight_label`, `route_label`, `metrics_label`) derive formatted strings from the fields.
+`Flight` is an immutable dataclass with fields: callsign, aircraft, origin, destination, altitude, speed, track, vertical_rate. Display helpers (`flight_label`, `route_label`, `metrics_label`) derive formatted strings from the fields.
 
 `FlightBuffer` is a fixed-size ring buffer (default 5) of recent flights. It deduplicates by callsign — the same flight won't be pushed twice. Used to populate the empty state display.
 
 ### Renderer
 
-The Departure Mono font (OTF) is rendered via Pillow at the appropriate pixel size for the 64×32 display. Each flight card is drawn by compositing text onto an off-screen PIL image, then blitting pixel-by-pixel onto the matrix canvas. This avoids BDF font conversion entirely and works identically on emulator and real hardware.
+The 5×7 BDF bitmap font (from hzeller's rpi-rgb-led-matrix) is rendered directly via `graphics.DrawText` on the matrix canvas. No Pillow or off-screen compositing — text is drawn pixel by pixel directly onto the canvas.
 
-Flight card layout (5 rows):
-- Airline + flight number (orange), airline logo top-right corner
-- Origin → destination (cyan)
-- Aircraft type (dim white)
-- Altitude, speed, vertical rate (green)
-- Dots/separators as subtle visual guides
+Flight card layout (4 rows of 5×7 pixels each):
+- Row 0: Airline + flight number (e.g., `UAL2337`)
+- Row 1: Origin → destination (e.g., `SFO→LAX`)
+- Row 2: Aircraft type (e.g., `B738`)
+- Row 3: Metrics page (ALT/SPD/TRK/VRT cycling every 3s)
 
 ### Airline Logos
 
@@ -98,5 +101,5 @@ Testing the renderer and display abstraction is deferred — they require the em
 
 ## Further Notes
 
-- The OpenSky free tier has rate limits (400 queries/day authenticated). The default refresh interval of 30 seconds fits well within this.
-- Departure Mono is SIL OFL licensed — free for use.
+- AeroAPI is a paid per-query API with a free tier ($5/month free usage, $10/month for ADS-B feeders). The default refresh interval of 30 seconds keeps usage within the free tier.
+- The 5×7 BDF font is from hzeller's rpi-rgb-led-matrix repository, licensed under the Apache License 2.0.

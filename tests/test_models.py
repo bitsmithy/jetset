@@ -1,6 +1,5 @@
 """Tests for the Flight model."""
 
-import pytest
 from jetset.models import Flight
 
 

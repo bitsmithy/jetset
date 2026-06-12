@@ -1,0 +1,180 @@
+{
+  "flights": [
+    {
+      "ident": "CCA2534",
+      "ident_icao": "CCA2534",
+      "ident_iata": "CA2534",
+      "fa_flight_id": "CCA2534-1781145312-schedule-1475p",
+      "actual_off": "2026-06-13T02:29:00Z",
+      "actual_on": null,
+      "foresight_predictions_available": false,
+      "predicted_out": null,
+      "predicted_off": null,
+      "predicted_on": null,
+      "predicted_in": null,
+      "predicted_out_source": null,
+      "predicted_off_source": null,
+      "predicted_on_source": null,
+      "predicted_in_source": null,
+      "origin": {
+        "code": "ZUNZ",
+        "code_icao": "ZUNZ",
+        "code_iata": "LZY",
+        "code_lid": null,
+        "timezone": "Asia/Shanghai",
+        "name": "Nyingchi Mainling",
+        "city": "Nyingchi",
+        "airport_info_url": "/airports/ZUNZ"
+      },
+      "destination": {
+        "code": "ZUTF",
+        "code_icao": "ZUTF",
+        "code_iata": "TFU",
+        "code_lid": null,
+        "timezone": "Asia/Shanghai",
+        "name": "Chengdu Tianfu Int'l",
+        "city": "Chengdu",
+        "airport_info_url": "/airports/ZUTF"
+      },
+      "waypoints": [],
+      "first_position_time": "2026-06-13T02:32:23Z",
+      "last_position": {
+        "fa_flight_id": "CCA2534-1781145312-schedule-1475p",
+        "altitude": 0,
+        "altitude_change": "-",
+        "groundspeed": 0,
+        "heading": 82,
+        "latitude": 29.53886,
+        "longitude": 96.10843,
+        "timestamp": "2026-06-13T02:43:23Z",
+        "update_type": "P"
+      },
+      "bounding_box": [
+        29.53886,
+        94.7033,
+        29.35424,
+        96.10843
+      ],
+      "ident_prefix": null,
+      "aircraft_type": "A319"
+    },
+    {
+      "ident": "CSC8622",
+      "ident_icao": "CSC8622",
+      "ident_iata": "3U8622",
+      "fa_flight_id": "CSC8622-1781143318-schedule-745p",
+      "actual_off": "2026-06-13T02:12:00Z",
+      "actual_on": null,
+      "foresight_predictions_available": false,
+      "predicted_out": null,
+      "predicted_off": null,
+      "predicted_on": null,
+      "predicted_in": null,
+      "predicted_out_source": null,
+      "predicted_off_source": null,
+      "predicted_on_source": null,
+      "predicted_in_source": null,
+      "origin": {
+        "code": "ZUNZ",
+        "code_icao": "ZUNZ",
+        "code_iata": "LZY",
+        "code_lid": null,
+        "timezone": "Asia/Shanghai",
+        "name": "Nyingchi Mainling",
+        "city": "Nyingchi",
+        "airport_info_url": "/airports/ZUNZ"
+      },
+      "destination": {
+        "code": "ZUUU",
+        "code_icao": "ZUUU",
+        "code_iata": "CTU",
+        "code_lid": null,
+        "timezone": "Asia/Shanghai",
+        "name": "Chengdu Shuangliu Int'l",
+        "city": "Chengdu",
+        "airport_info_url": "/airports/ZUUU"
+      },
+      "waypoints": [],
+      "first_position_time": "2026-06-13T02:15:20Z",
+      "last_position": {
+        "fa_flight_id": "CSC8622-1781143318-schedule-745p",
+        "altitude": 331,
+        "altitude_change": "-",
+        "groundspeed": 478,
+        "heading": 82,
+        "latitude": 29.85343,
+        "longitude": 95.81238,
+        "timestamp": "2026-06-13T02:43:23Z",
+        "update_type": "P"
+      },
+      "bounding_box": [
+        29.85343,
+        94.23301,
+        29.36494,
+        95.87541
+      ],
+      "ident_prefix": null,
+      "aircraft_type": "A319"
+    },
+    {
+      "ident": "UEA1955",
+      "ident_icao": "UEA1955",
+      "ident_iata": "EU1955",
+      "fa_flight_id": "UEA1955-1781140401-schedule-285p",
+      "actual_off": "2026-06-13T01:11:00Z",
+      "actual_on": null,
+      "foresight_predictions_available": true,
+      "predicted_out": null,
+      "predicted_off": null,
+      "predicted_on": null,
+      "predicted_in": null,
+      "predicted_out_source": null,
+      "predicted_off_source": null,
+      "predicted_on_source": null,
+      "predicted_in_source": null,
+      "origin": {
+        "code": "ZUTF",
+        "code_icao": "ZUTF",
+        "code_iata": "TFU",
+        "code_lid": null,
+        "timezone": "Asia/Shanghai",
+        "name": "Chengdu Tianfu Int'l",
+        "city": "Chengdu",
+        "airport_info_url": "/airports/ZUTF"
+      },
+      "destination": {
+        "code": "ZULS",
+        "code_icao": "ZULS",
+        "code_iata": "LXA",
+        "code_lid": null,
+        "timezone": "Asia/Shanghai",
+        "name": "Lhasa Gonggar",
+        "city": "Lhasa",
+        "airport_info_url": "/airports/ZULS"
+      },
+      "waypoints": [],
+      "first_position_time": "2026-06-13T01:14:15Z",
+      "last_position": {
+        "fa_flight_id": "UEA1955-1781140401-schedule-285p",
+        "altitude": 342,
+        "altitude_change": "C",
+        "groundspeed": 414,
+        "heading": 261,
+        "latitude": 29.99561,
+        "longitude": 95.42013,
+        "timestamp": "2026-06-13T02:43:23Z",
+        "update_type": "P"
+      },
+      "bounding_box": [
+        30.80548,
+        95.42013,
+        29.99561,
+        104.63895
+      ],
+      "ident_prefix": null,
+      "aircraft_type": "A319"
+    }
+  ],
+  "links": null,
+  "num_pages": 1
+}
