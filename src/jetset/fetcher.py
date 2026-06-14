@@ -32,29 +32,39 @@ class AdsbLolAdapter(FlightAPI):
         self._flight_api = RequestsAPI("https://api.adsb.lol/v2")
         self._route_api = RequestsAPI("https://api.adsbdb.com/v0")
 
-    def _enrich_routes(self, flight_data: list[Any], max_callsigns: int = 20):
-        callsigns = [d.get("flight", "").rstrip() for d in flight_data]
-        unique_callsigns = list({c for c in callsigns})[:max_callsigns]
-        route_map = {}
+    def _enrich_routes(self, flight_data: list[Any], max_flights: int = 5):
+        route_map: dict[str, dict[str, str | None]] = {}
+        enriched = 0
+        seen: set[str] = set()
 
         try:
             with self._route_api as api:
-                for c in unique_callsigns:
-                    if route_data := api.get(f"/callsign/{c}").json():
+                for d in flight_data:
+                    if enriched >= max_flights:
+                        break
+                    callsign = d.get("flight", "").rstrip()
+                    if not callsign or callsign in seen:
+                        continue
+                    seen.add(callsign)
+
+                    if route_data := api.get(f"/callsign/{callsign}").json():
                         route_resp = route_data.get("response", {})
                         if isinstance(route_resp, dict):
                             route = route_resp.get("flightroute", {})
                             origin = route.get("origin", {}).get("iata_code")
                             destination = route.get("destination", {}).get("iata_code")
-                            route_map[c] = {"origin": origin, "destination": destination}
+                            if origin and destination:
+                                route_map[callsign] = {"origin": origin, "destination": destination}
+                                enriched += 1
 
         except (requests.exceptions.RequestException, ValueError) as e:
             print(f"[{type(self).__name__}] Error enriching routes: {e}")
 
         for d in flight_data:
             callsign = d.get("flight", "").rstrip()
-            d["origin"] = route_map.get(callsign, {}).get("origin")
-            d["destination"] = route_map.get(callsign, {}).get("destination")
+            if callsign in route_map:
+                d["origin"] = route_map[callsign]["origin"]
+                d["destination"] = route_map[callsign]["destination"]
 
     @staticmethod
     def _is_airborne(aircraft: dict) -> bool:
@@ -96,11 +106,11 @@ class AdsbLolAdapter(FlightAPI):
                     airborne = [
                         a for a in data["ac"] if self._is_airborne(a)
                     ]
-                    self._enrich_routes(airborne)
+                    self._enrich_routes(airborne, max_flights=5)
                     display = [
                         a for a in airborne
                         if a.get("origin") and a.get("destination")
-                    ][:5]
+                    ]
 
                     if raw:
                         return display
