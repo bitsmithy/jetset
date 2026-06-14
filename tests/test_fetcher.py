@@ -89,20 +89,7 @@ class TestAdsbLolFlightToFlight:
         assert aircraft_list[0]["origin"] == "SFO"
         assert aircraft_list[0]["destination"] == "LAX"
 
-    def test_filters_ga_aircraft(self) -> None:
-        from jetset.fetcher import AdsbLolAdapter
 
-        ga = {"flight": "N12345", "t": "C172"}
-        commercial = {"flight": "UAL2337 ", "t": "B738"}
-        no_callsign = {"t": "B738"}
-
-        assert not AdsbLolAdapter._is_commercial(ga)
-        assert AdsbLolAdapter._is_commercial(commercial)
-        assert not AdsbLolAdapter._is_commercial(no_callsign)
-
-        # 3-letter callsign with a GA type should be rejected
-        trf_p28a = {"flight": "TRF558", "t": "P28A"}
-        assert not AdsbLolAdapter._is_commercial(trf_p28a)
 
     def test_airborne_filter(self) -> None:
         from jetset.fetcher import AdsbLolAdapter
@@ -154,7 +141,7 @@ class TestAdsbLolFetchNearby:
         assert flight.destination == "LAX"
         assert flight.aircraft == "B772"
 
-    def test_raw_returns_enriched_commercial_dicts(self) -> None:
+    def test_raw_returns_enriched_dicts(self) -> None:
         from unittest.mock import MagicMock, patch
 
         from jetset.fetcher import AdsbLolAdapter
