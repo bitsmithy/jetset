@@ -105,6 +105,10 @@ class AdsbLolAdapter(FlightAPI):
         callsign = (aircraft.get("flight") or "").strip()
         if not callsign:
             return False
+        # If we know the aircraft type, it must be a recognised commercial type
+        ac_type = aircraft.get("t")
+        if ac_type and ac_type not in AdsbLolAdapter.COMMERCIAL_AIRCRAFT_TYPES:
+            return False
         # Airline callsigns are 3-letter ICAO prefix + digits (e.g. "UAL2337")
         return (
             len(callsign) >= 4
@@ -150,7 +154,10 @@ class AdsbLolAdapter(FlightAPI):
         try:
             with self._flight_api as api:
                 if data := api.get(f"/point/{lat}/{lon}/{range_nm}").json():
-                    airborne = [a for a in data["ac"] if self._is_commercial(a) and self._is_airborne(a)]
+                    airborne = [
+                        a for a in data["ac"]
+                        if self._is_commercial(a) and self._is_airborne(a)
+                    ]
                     display = airborne[:5]
                     self._enrich_routes(display)
 

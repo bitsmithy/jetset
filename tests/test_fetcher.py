@@ -100,6 +100,10 @@ class TestAdsbLolFlightToFlight:
         assert AdsbLolAdapter._is_commercial(commercial)
         assert not AdsbLolAdapter._is_commercial(no_callsign)
 
+        # 3-letter callsign with a GA type should be rejected
+        trf_p28a = {"flight": "TRF558", "t": "P28A"}
+        assert not AdsbLolAdapter._is_commercial(trf_p28a)
+
     def test_airborne_filter(self) -> None:
         from jetset.fetcher import AdsbLolAdapter
 
