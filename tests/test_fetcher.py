@@ -89,6 +89,30 @@ class TestAdsbLolFlightToFlight:
         assert aircraft_list[0]["origin"] == "SFO"
         assert aircraft_list[0]["destination"] == "LAX"
 
+    def test_enrich_routes_stops_after_max_flights(self) -> None:
+        from unittest.mock import MagicMock, patch
+
+        from jetset.fetcher import AdsbLolAdapter
+
+        adapter = AdsbLolAdapter()
+        # Two aircraft with different callsigns
+        ac1 = dict(ADSB_LOL_AIRCRAFT)  # UAL1170
+        ac2 = dict(ADSB_LOL_AIRCRAFT)
+        ac2["flight"] = "SWA4186"
+
+        mock_route = MagicMock()
+        mock_route.json.return_value = ADSBDB_RESPONSE
+
+        with patch.object(adapter._route_api, "get", return_value=mock_route) as mock_get:
+            # max_flights=1 so it should stop after the first successful enrich
+            adapter._enrich_routes([ac1, ac2], max_flights=1)
+
+        # Only one flight should be enriched
+        assert ac1["origin"] == "SFO"
+        assert ac2.get("origin") is None
+        # API should only have been called once
+        assert mock_get.call_count == 1
+
 
 
     def test_airborne_filter(self) -> None:
