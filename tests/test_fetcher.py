@@ -100,6 +100,19 @@ class TestAdsbLolFlightToFlight:
         assert AdsbLolAdapter._is_commercial(commercial)
         assert not AdsbLolAdapter._is_commercial(no_callsign)
 
+    def test_airborne_filter(self) -> None:
+        from jetset.fetcher import AdsbLolAdapter
+
+        airborne = {"flight": "UAL2337", "alt_baro": 35000}
+        on_ground = {"flight": "SWA45", "alt_baro": 0}
+        grounded_str = {"flight": "AAL100", "alt_baro": "ground"}
+        no_alt = {"flight": "DAL200", "t": "B738"}
+
+        assert AdsbLolAdapter._is_airborne(airborne)
+        assert not AdsbLolAdapter._is_airborne(on_ground)
+        assert not AdsbLolAdapter._is_airborne(grounded_str)
+        assert not AdsbLolAdapter._is_airborne(no_alt)
+
 
 def _make_adsblol_response() -> dict:
     return {
