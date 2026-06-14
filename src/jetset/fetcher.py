@@ -144,12 +144,13 @@ class AdsbLolAdapter(FlightAPI):
             with self._flight_api as api:
                 if data := api.get(f"/point/{lat}/{lon}/{range_nm}").json():
                     commercial = [a for a in data["ac"] if self._is_commercial(a)]
-                    self._enrich_routes(commercial)
+                    display = commercial[:5]
+                    self._enrich_routes(display)
 
                     if raw:
-                        return commercial
-                    elif commercial:
-                        return [self.json_to_flight(f) for f in commercial]
+                        return display
+                    elif display:
+                        return [self.json_to_flight(f) for f in display]
 
         except (requests.exceptions.RequestException, ValueError) as e:
             print(f"[{type(self).__name__}] Error fetching nearby flights: {e}")
