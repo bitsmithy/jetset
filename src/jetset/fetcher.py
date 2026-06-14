@@ -114,6 +114,13 @@ class AdsbLolAdapter(FlightAPI):
         )
 
     @staticmethod
+    def _is_airborne(aircraft: dict) -> bool:
+        alt = aircraft.get("alt_baro")
+        if alt is None or alt == "ground":
+            return False
+        return int(alt) > 0
+
+    @staticmethod
     def json_to_flight(data: dict) -> Flight:
         origin = data.get("origin")
         destination = data.get("destination")
@@ -143,8 +150,8 @@ class AdsbLolAdapter(FlightAPI):
         try:
             with self._flight_api as api:
                 if data := api.get(f"/point/{lat}/{lon}/{range_nm}").json():
-                    commercial = [a for a in data["ac"] if self._is_commercial(a)]
-                    display = commercial[:5]
+                    airborne = [a for a in data["ac"] if self._is_commercial(a) and self._is_airborne(a)]
+                    display = airborne[:5]
                     self._enrich_routes(display)
 
                     if raw:
