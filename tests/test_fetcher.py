@@ -77,19 +77,6 @@ class TestAeroAPIFlightToFlight:
         assert flight.track == 270.0
         assert flight.vertical_rate is None
 
-    def test_parses_all_fixture_flights(self) -> None:
-        from jetset.fetcher import AeroAPIAdapter
-
-        fixture = json.loads(FIXTURE_PATH.read_text())
-        for flight_data in fixture["flights"]:
-            flight = AeroAPIAdapter.json_to_flight(flight_data)
-            assert flight.callsign
-            # altitude=None is valid (no position data); speed=0 is valid (on ground)
-            assert isinstance(flight.altitude, (int, type(None)))
-            assert isinstance(flight.speed, (int, type(None)))
-            assert isinstance(flight.track, (float, int, type(None)))
-            assert flight.vertical_rate is None
-
     def test_missing_last_position_returns_defaults(self) -> None:
         from jetset.fetcher import AeroAPIAdapter
 
@@ -167,6 +154,24 @@ class TestAeroAPIFetchNearby:
 
         assert "flights" in data
         assert len(data["flights"]) >= 1
+
+
+class TestAeroAPIFixture:
+    def test_parses_all_fixture_flights(self) -> None:
+        from jetset.fetcher import AeroAPIAdapter
+
+        fixture = json.loads(FIXTURE_PATH.read_text())
+        assert len(fixture["flights"]) >= 1
+
+        for flight_data in fixture["flights"]:
+            flight = AeroAPIAdapter.json_to_flight(flight_data)
+            assert flight.callsign
+            assert isinstance(flight.altitude, (int, type(None)))
+            assert isinstance(flight.speed, (int, type(None)))
+            assert isinstance(flight.track, (float, int, type(None)))
+            assert flight.vertical_rate is None
+            assert isinstance(flight.origin, (str, type(None)))
+            assert isinstance(flight.destination, (str, type(None)))
 
 
 ADSB_LOL_AIRCRAFT = {
