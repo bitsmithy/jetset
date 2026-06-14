@@ -54,6 +54,6 @@ class TestConfigFromYaml:
         assert config.cycle == 4
         assert config.refresh == 15
 
-    def test_api_source_defaults_to_aeroapi(self) -> None:
+    def test_api_source_defaults_to_adsblol(self) -> None:
         config = AppConfig.load()
-        assert config.api_source == "aeroapi"
+        assert config.api_source == "adsblol"

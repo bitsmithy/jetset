@@ -7,11 +7,11 @@ import yaml
 class AppConfig:
     # IAH
     home_lat: float = 29.9931
-    home_lon: float = 95.3416
+    home_lon: float = -95.3416
     range: int = 100
     cycle: int = 10
     refresh: int = 30
-    api_source: str = "aeroapi"
+    api_source: str = "adsblol"
 
     @classmethod
     def load(cls, path=None):
