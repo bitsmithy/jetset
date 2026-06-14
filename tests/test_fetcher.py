@@ -69,8 +69,8 @@ class TestAeroAPIFlightToFlight:
         flight = AeroAPIAdapter.json_to_flight(AEROAPI_FLIGHT_EXAMPLE)
 
         assert flight.callsign == "UAL2337"
-        assert flight.origin == "KSFO"
-        assert flight.destination == "KLAX"
+        assert flight.origin == "SFO"
+        assert flight.destination == "LAX"
         assert flight.aircraft == "B738"
         assert flight.altitude == 35000
         assert flight.speed == 450
