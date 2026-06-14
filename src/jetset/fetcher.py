@@ -65,6 +65,63 @@ class AdsbLolAdapter(FlightAPI):
             d["origin"] = route_map.get(callsign, {}).get("origin")
             d["destination"] = route_map.get(callsign, {}).get("destination")
 
+    COMMERCIAL_AIRCRAFT_TYPES = {
+        "A319",
+        "A320",
+        "A321",
+        "A21N",
+        "A332",
+        "A333",
+        "A339",
+        "A35K",
+        "A388",
+        "B38M",
+        "B39M",
+        "B737",
+        "B738",
+        "B739",
+        "B744",
+        "B748",
+        "B752",
+        "B753",
+        "B762",
+        "B763",
+        "B764",
+        "B772",
+        "B773",
+        "B77W",
+        "B77L",
+        "B778",
+        "B779",
+        "B787",
+        "B788",
+        "B789",
+        "B78X",
+        "BCS3",
+        "CRJ2",
+        "CRJ7",
+        "CRJ9",
+        "E75L",
+        "E75S",
+        "E190",
+        "E195",
+        "E170",
+        "E175",
+    }
+
+    @staticmethod
+    def _is_commercial(aircraft: dict) -> bool:
+        callsign = (aircraft.get("flight") or "").strip()
+        if not callsign:
+            return False
+        # Airline callsigns are 3-letter ICAO prefix + digits (e.g. "UAL2337")
+        return (
+            len(callsign) >= 4
+            and callsign[:3].isalpha()
+            and callsign[:3].isupper()
+            and callsign[3:].isdigit()
+        )
+
     @staticmethod
     def json_to_flight(data: dict) -> Flight:
         origin = data.get("origin")
@@ -95,12 +152,13 @@ class AdsbLolAdapter(FlightAPI):
         try:
             with self._flight_api as api:
                 if data := api.get(f"/point/{lat}/{lon}/{range_nm}").json():
-                    self._enrich_routes(data["ac"])
+                    commercial = [a for a in data["ac"] if self._is_commercial(a)]
+                    self._enrich_routes(commercial)
 
                     if raw:
-                        return data["ac"]
-                    elif raw_flights := data["ac"]:
-                        return [self.json_to_flight(f) for f in raw_flights]
+                        return commercial
+                    elif commercial:
+                        return [self.json_to_flight(f) for f in commercial]
 
         except (requests.exceptions.RequestException, ValueError) as e:
             print(f"[{type(self).__name__}] Error fetching nearby flights: {e}")

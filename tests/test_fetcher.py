@@ -233,15 +233,27 @@ class TestAdsbLolFlightToFlight:
         assert aircraft_list[0]["origin"] == "SFO"
         assert aircraft_list[0]["destination"] == "LAX"
 
+    def test_filters_ga_aircraft(self) -> None:
+        from jetset.fetcher import AdsbLolAdapter
 
-ADSB_LOL_RESPONSE = {
-    "ac": [ADSB_LOL_AIRCRAFT],
-    "total": 1,
-    "now": 1234567890,
-    "msg": "No error",
-    "ctime": 0,
-    "ptime": 0,
-}
+        ga = {"flight": "N12345", "t": "C172"}
+        commercial = {"flight": "UAL2337 ", "t": "B738"}
+        no_callsign = {"t": "B738"}
+
+        assert not AdsbLolAdapter._is_commercial(ga)
+        assert AdsbLolAdapter._is_commercial(commercial)
+        assert not AdsbLolAdapter._is_commercial(no_callsign)
+
+
+def _make_adsblol_response() -> dict:
+    return {
+        "ac": [dict(ADSB_LOL_AIRCRAFT)],
+        "total": 1,
+        "now": 1234567890,
+        "msg": "No error",
+        "ctime": 0,
+        "ptime": 0,
+    }
 
 
 class TestAdsbLolFetchNearby:
@@ -253,7 +265,7 @@ class TestAdsbLolFetchNearby:
         adapter = AdsbLolAdapter()
 
         mock_flight = MagicMock()
-        mock_flight.json.return_value = ADSB_LOL_RESPONSE
+        mock_flight.json.return_value = _make_adsblol_response()
 
         mock_route = MagicMock()
         mock_route.json.return_value = ADSBDB_RESPONSE
@@ -269,7 +281,7 @@ class TestAdsbLolFetchNearby:
         assert flight.destination == "LAX"
         assert flight.aircraft == "B772"
 
-    def test_raw_returns_enriched_dicts(self) -> None:
+    def test_raw_returns_enriched_commercial_dicts(self) -> None:
         from unittest.mock import MagicMock, patch
 
         from jetset.fetcher import AdsbLolAdapter
@@ -277,7 +289,7 @@ class TestAdsbLolFetchNearby:
         adapter = AdsbLolAdapter()
 
         mock_flight = MagicMock()
-        mock_flight.json.return_value = ADSB_LOL_RESPONSE
+        mock_flight.json.return_value = _make_adsblol_response()
 
         mock_route = MagicMock()
         mock_route.json.return_value = ADSBDB_RESPONSE
@@ -289,6 +301,7 @@ class TestAdsbLolFetchNearby:
         assert isinstance(data, list)
         assert len(data) == 1
         assert data[0]["flight"] == "UAL1170 "
+        # raw mode returns filtered + enriched dicts
         assert data[0]["origin"] == "SFO"
         assert data[0]["destination"] == "LAX"
 
