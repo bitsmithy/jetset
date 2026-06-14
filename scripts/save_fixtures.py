@@ -5,7 +5,7 @@ Run all fixtures:
     make fixtures
 
 Run a specific fixture:
-    python scripts/save_fixtures.py aeroapi
+    python scripts/save_fixtures.py adsblol
 """
 
 import json
@@ -13,12 +13,8 @@ import os
 import sys
 from dataclasses import dataclass
 
-from dotenv import load_dotenv
-
 from jetset.config import AppConfig
-from jetset.fetcher import AdsbLolAdapter, AeroAPIAdapter
-
-load_dotenv()
+from jetset.fetcher import AdsbLolAdapter
 
 FIXTURES_DIR = "tests/fixtures"
 
@@ -67,7 +63,6 @@ class FixtureProvider:
 
 FIXTURES: list[type] = [
     AdsbLolAdapter,
-    AeroAPIAdapter,
 ]
 
 
