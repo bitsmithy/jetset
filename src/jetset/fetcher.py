@@ -116,8 +116,8 @@ class AeroAPIAdapter(FlightAPI):
 
     @staticmethod
     def json_to_flight(data: dict) -> Flight:
-        origin = (data.get("origin") or {}).get("code")
-        destination = (data.get("destination") or {}).get("code")
+        origin = (data.get("origin") or {}).get("code_iata")
+        destination = (data.get("destination") or {}).get("code_iata")
         callsign = data.get("ident", "")
         aircraft = data.get("aircraft_type")
 
