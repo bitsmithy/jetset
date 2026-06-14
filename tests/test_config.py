@@ -26,9 +26,9 @@ class TestConfigDefaults:
         config = AppConfig.load()
         assert config.range > 0
 
-    def test_default_cycle(self) -> None:
+    def test_default_pause(self) -> None:
         config = AppConfig.load()
-        assert config.cycle > 0
+        assert config.pause > 0
 
     def test_default_refresh(self) -> None:
         config = AppConfig.load()
@@ -40,7 +40,7 @@ class TestConfigFromYaml:
         yaml_content = {
             "home": {"lat": 37.62, "lon": -122.38},
             "range": 80,
-            "cycle": 4,
+            "pause": 4,
             "refresh": 15,
         }
         config_path = tmp_path / "config.yaml"
@@ -51,7 +51,7 @@ class TestConfigFromYaml:
         assert config.home_lat == 37.62
         assert config.home_lon == -122.38
         assert config.range == 80
-        assert config.cycle == 4
+        assert config.pause == 4
         assert config.refresh == 15
 
     def test_api_source_defaults_to_adsblol(self) -> None:
