@@ -1,9 +1,14 @@
 from collections.abc import Sequence
-from typing import Any, Protocol
+from typing import Any, NamedTuple, Protocol
 
 import requests
 
 from jetset.models import Flight
+
+
+class Route(NamedTuple):
+    origin: str
+    destination: str
 
 
 class RequestsAPI(requests.Session):
@@ -32,39 +37,45 @@ class AdsbLolAdapter(FlightAPI):
         self._flight_api = RequestsAPI("https://api.adsb.lol/v2")
         self._route_api = RequestsAPI("https://api.adsbdb.com/v0")
 
-    def _enrich_routes(self, flight_data: list[Any], max_flights: int = 5):
-        route_map: dict[str, dict[str, str | None]] = {}
-        enriched = 0
-        seen: set[str] = set()
-
+    def _fetch_route(self, callsign: str) -> Route | None:
         try:
             with self._route_api as api:
-                for d in flight_data:
-                    if enriched >= max_flights:
-                        break
-                    callsign = d.get("flight", "").rstrip()
-                    if not callsign or callsign in seen:
-                        continue
-                    seen.add(callsign)
+                if route_data := api.get(f"/callsign/{callsign}").json():
+                    route_resp = route_data.get("response", {})
+                    if isinstance(route_resp, dict):
+                        route = route_resp.get("flightroute", {})
+                        origin = route.get("origin", {}).get("iata_code")
+                        destination = route.get("destination", {}).get("iata_code")
 
-                    if route_data := api.get(f"/callsign/{callsign}").json():
-                        route_resp = route_data.get("response", {})
-                        if isinstance(route_resp, dict):
-                            route = route_resp.get("flightroute", {})
-                            origin = route.get("origin", {}).get("iata_code")
-                            destination = route.get("destination", {}).get("iata_code")
-                            if origin and destination:
-                                route_map[callsign] = {"origin": origin, "destination": destination}
-                                enriched += 1
-
+                        return Route(origin, destination)
         except (requests.exceptions.RequestException, ValueError) as e:
-            print(f"[{type(self).__name__}] Error enriching routes: {e}")
+            print(f"[{type(self).__name__}] Error fetching route for callsign {callsign}: {e}")
+
+    def _enrich_routes(self, flight_data: list[Any], max_flights: int = 5):
+        route_map: dict[str, Route] = {}
+        enriched = []
+        seen: set[str] = set()
 
         for d in flight_data:
+            if len(enriched) >= max_flights:
+                break
             callsign = d.get("flight", "").rstrip()
-            if callsign in route_map:
-                d["origin"] = route_map[callsign]["origin"]
-                d["destination"] = route_map[callsign]["destination"]
+            if not callsign:
+                continue
+
+            if callsign in seen:
+                d["origin"] = route_map[callsign].origin
+                d["destination"] = route_map[callsign].destination
+                enriched.append(d)
+            else:
+                seen.add(callsign)
+                if route := self._fetch_route(callsign):
+                    route_map[callsign] = route
+                    d["origin"] = route.origin
+                    d["destination"] = route.destination
+                    enriched.append(d)
+
+        return enriched
 
     @staticmethod
     def _is_airborne(aircraft: dict) -> bool:
@@ -103,19 +114,13 @@ class AdsbLolAdapter(FlightAPI):
         try:
             with self._flight_api as api:
                 if data := api.get(f"/point/{lat}/{lon}/{range_nm}").json():
-                    airborne = [
-                        a for a in data["ac"] if self._is_airborne(a)
-                    ]
-                    self._enrich_routes(airborne, max_flights=5)
-                    display = [
-                        a for a in airborne
-                        if a.get("origin") and a.get("destination")
-                    ]
+                    airborne = [a for a in data["ac"] if self._is_airborne(a)]
+                    enriched = self._enrich_routes(airborne, max_flights=5)
 
                     if raw:
-                        return display
-                    elif display:
-                        return [self.json_to_flight(f) for f in display]
+                        return enriched
+                    elif enriched:
+                        return [self.json_to_flight(f) for f in enriched]
 
         except (requests.exceptions.RequestException, ValueError) as e:
             print(f"[{type(self).__name__}] Error fetching nearby flights: {e}")
