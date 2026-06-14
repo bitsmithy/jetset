@@ -34,18 +34,21 @@ class Flight:
         data = ""
         if page == 0 and self.altitude:
             formatted_altitude = f"{self.altitude // 1000}K"
-            data += f"ALT {formatted_altitude}"
+            data += f"{formatted_altitude} ft"
         elif page == 1 and self.speed:
-            data += f"SPD {self.speed}"
-        elif page == 2 and self.vertical_rate:
-            formatted_rate = str(abs(self.vertical_rate))
-            if self.vertical_rate > 0:
-                formatted_rate += "▲"
-            elif self.vertical_rate < 0:
-                formatted_rate += "▼"
-            data += f"VRT {formatted_rate}"
-        elif page == 3 and self.track:
-            data += f"TRK {self.track}°"
+            data += f"{self.speed} kt"
+        elif page == 2 and self.vertical_rate is not None:
+            if self.vertical_rate == 0:
+                data += "LVL"
+            else:
+                formatted_rate = str(abs(self.vertical_rate))
+                if self.vertical_rate > 0:
+                    formatted_rate += "▲"
+                elif self.vertical_rate < 0:
+                    formatted_rate += "▼"
+                data += f"{formatted_rate} ft/m"
+        elif page == 3 and self.track is not None:
+            data += f"{int(self.track)}°"
 
         return data
 
