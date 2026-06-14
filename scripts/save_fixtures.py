@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from dotenv import load_dotenv
 
 from jetset.config import AppConfig
-from jetset.fetcher import AeroAPIAdapter
+from jetset.fetcher import AdsbLolAdapter, AeroAPIAdapter
 
 load_dotenv()
 
@@ -45,11 +45,15 @@ class FixtureProvider:
 
     def save(self, config: AppConfig) -> None:
         api_key = os.environ.get(self.env_key)
-        if not api_key:
-            print(f"Skipping {self.name}: {self.env_key} not set")
-            return
+        if api_key:
+            adapter = self.adapter_class(api_key)
+        else:
+            try:
+                adapter = self.adapter_class()
+            except TypeError:
+                print(f"Skipping {self.name}: {self.env_key} not set")
+                return
 
-        adapter = self.adapter_class(api_key)
         data = adapter.nearby_flights(config.home_lat, config.home_lon, config.range, raw=True)
 
         flights = data.get("flights", data) if isinstance(data, dict) else data
@@ -62,6 +66,7 @@ class FixtureProvider:
 
 
 FIXTURES: list[type] = [
+    AdsbLolAdapter,
     AeroAPIAdapter,
 ]
 
