@@ -1,7 +1,7 @@
 import logging
 import time
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Protocol
 
 import requests
@@ -38,7 +38,10 @@ class RouteCache:
 
 
 class FlightAPI(Protocol):
-    def nearby_flights(self, lat: float, lon: float, range: int, raw: bool) -> Sequence[Flight]: ...
+    def nearby_flights(
+        self, lat: float, lon: float, range: int, raw: bool = False
+    ) -> Sequence[Flight]: ...
+    def refresh_flight(self, flight: Flight) -> Flight: ...
 
 
 class AdsbLolAdapter(FlightAPI):
@@ -157,3 +160,30 @@ class AdsbLolAdapter(FlightAPI):
             logger.warning("Error fetching nearby flights: %s", e)
 
         return flights
+
+    def refresh_flight(self, flight: Flight) -> Flight:
+        """Update a flight's metrics from adsb.lol, preserving its route.
+
+        The route is kept from the original Flight because it's static for a
+        given callsign — re-fetching it would waste API calls and risk the
+        plausibility check failing (the aircraft may have flown out of range
+        or be circling / landing).
+
+        If the API call fails or the aircraft is no longer airborne, the
+        original flight is returned unchanged so the display can show stale
+        data rather than nothing.
+        """
+        try:
+            with self._flight_api as api:
+                logger.debug(f"Fetching flight with callsign {flight.callsign}")
+                if data := api.get(f"/callsign/{flight.callsign}").json():
+                    aircraft = data.get("ac", [])[0]
+                    if aircraft:
+                        updated = self.json_to_flight(aircraft)
+                        return replace(updated, route=flight.route)
+
+                return flight
+
+        except (requests.exceptions.RequestException, ValueError) as e:
+            logger.warning("Error fetching flight by callsign: %s", e)
+            return flight

@@ -3,6 +3,17 @@
 from jetset.models import Flight
 
 
+def loading_label(page: int = 0) -> str:
+    if page == 1:
+        return "LOADING."
+    if page == 2:
+        return "LOADING.."
+    if page == 3:
+        return "LOADING..."
+
+    return "LOADING"
+
+
 def flight_label(flight: Flight) -> str:
     """Format the callsign display string."""
     return flight.callsign
