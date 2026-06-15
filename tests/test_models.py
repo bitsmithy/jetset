@@ -22,6 +22,18 @@ class TestFlightBuffer:
         assert len(buf) == 1
         assert buf.flights == [f1]
 
+    def test_replace_updates_existing_flight_by_callsign(self) -> None:
+        from jetset.models import FlightBuffer
+
+        buf = FlightBuffer(maxlen=3)
+        buf.push(Flight(callsign="UAL2337", altitude=35000))
+        replacement = Flight(callsign="UAL2337", altitude=37000)
+
+        buf.replace("UAL2337", replacement)
+
+        assert len(buf) == 1
+        assert buf.flights[0].altitude == 37000
+
     def test_deduplicates_by_callsign(self) -> None:
         from jetset.models import FlightBuffer
 

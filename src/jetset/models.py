@@ -60,6 +60,12 @@ class FlightBuffer:
 
         self._flights.append(flight)
 
+    def replace(self, callsign: str, flight: Flight) -> None:
+        for i, existing in enumerate(self._flights):
+            if existing.callsign == callsign:
+                self._flights[i] = flight
+                return
+
 
 @dataclass(frozen=True)
 class Airport:

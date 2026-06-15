@@ -1,7 +1,7 @@
 from RGBMatrixEmulator import graphics
 from RGBMatrixEmulator.emulation.canvas import Canvas
 
-from jetset.display import aircraft_label, flight_label, metrics_label, route_label
+from jetset.display import aircraft_label, flight_label, loading_label, metrics_label, route_label
 from jetset.models import Flight
 
 # Colour palette
@@ -32,3 +32,9 @@ def render_flight_card(canvas: Canvas, flight: Flight, metric_page=0):
     draw_text(canvas, 1, FONT_HEIGHT * 2 + 1, route_label(flight), CYAN)
     draw_text(canvas, 1, FONT_HEIGHT * 3 + 2, aircraft_label(flight), GREEN)
     draw_text(canvas, 1, FONT_HEIGHT * 4 + 3, metrics_label(flight, metric_page), BLUE)
+
+
+def render_loading(canvas: Canvas, page=0):
+    canvas.Clear()
+
+    draw_text(canvas, 1, FONT_HEIGHT * 1 + 0, loading_label(page), RED)

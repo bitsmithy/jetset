@@ -3,6 +3,13 @@
 from jetset.models import Airport, Flight, FlightRoute, Position
 
 
+class TestLoadingLabel:
+    def test_returns_loading_text(self) -> None:
+        from jetset.display import loading_label
+
+        assert loading_label() == "LOADING"
+
+
 class TestFlightLabel:
     def test_returns_callsign(self) -> None:
         from jetset.display import flight_label

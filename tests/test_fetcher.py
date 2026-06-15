@@ -19,6 +19,8 @@ class FlightAPI(Protocol):
     ) -> Sequence[Flight]:
         ...
 
+    def refresh_flight(self, flight: Flight) -> Flight | None: ...
+
 
 class TestFlightAPIProtocol:
     def test_protocol_accepts_valid_adapter(self) -> None:
@@ -386,6 +388,40 @@ class TestAdsbLolFetchNearby:
 
 
 ADSB_LOL_FIXTURE_PATH = Path(__file__).parent / "fixtures" / "adsblol_response.json"
+
+
+class TestRefreshFlight:
+    def test_returns_fresh_metrics_with_preserved_route(self) -> None:
+        from unittest.mock import MagicMock, patch
+
+        from jetset.fetcher import AdsbLolAdapter
+        from jetset.models import Airport, Flight, FlightRoute, Position
+
+        adapter = AdsbLolAdapter()
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {
+            "ac": [dict(ADSB_LOL_AIRCRAFT)],
+            "total": 1,
+        }
+
+        route = FlightRoute(
+            Airport("SFO", Position(37.62, -122.38)),
+            Airport("LAX", Position(33.94, -118.41)),
+        )
+        existing = Flight(
+            callsign="UAL1170", route=route, altitude=35000,
+            speed=450, track=140.0, vertical_rate=1600,
+        )
+
+        with patch.object(adapter._flight_api, "get", return_value=mock_resp):
+            refreshed = adapter.refresh_flight(existing)
+
+        assert refreshed is not None
+        assert refreshed.callsign == "UAL1170"
+        assert refreshed.altitude == 17700  # fresh from mock
+        assert refreshed.speed == 400
+        # Route should be preserved from the original
+        assert refreshed.route is route
 
 
 class TestAdsbLolFixture:

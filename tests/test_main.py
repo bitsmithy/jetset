@@ -86,6 +86,33 @@ class TestAppCurrentFrame:
         assert result is None
 
 
+class TestAppHistory:
+    def test_refreshes_stale_flights_after_fetch(self) -> None:
+        from unittest.mock import patch
+
+        from jetset.app import App
+
+        config = AppConfig()
+        app = App(config)
+        # Seed buffer with a flight not in the new live set
+        stale = Flight(callsign="UAL2337")
+        app.buffer.push(stale)
+        # Live set returns only one different flight
+        live = [Flight(callsign="SWA45")]
+
+        with (
+            patch.object(app.adapter, "nearby_flights", return_value=live),
+            patch.object(app.adapter, "refresh_flight", return_value=stale) as mock_refresh,
+            patch("jetset.app.time.time", return_value=500),
+        ):
+            app._fetch()
+
+        # SWA45 was pushed to the buffer
+        assert len(app.buffer) == 2
+        # UAL2337 was refreshed via refresh_flight
+        mock_refresh.assert_called_once_with(stale)
+
+
 class TestAppRenderFrame:
     def test_renders_and_advances_frame(self) -> None:
         from jetset.app import App
@@ -107,3 +134,25 @@ class TestAppRenderFrame:
         mock_render.assert_called_once_with(mock_canvas, frame.flight, frame.metric_page)
         mock_matrix.SwapOnVSync.assert_called_once_with(mock_canvas)
         assert app.frame == 4
+
+
+class TestAppLoading:
+    def test_renders_loading_when_buffer_empty(self) -> None:
+        from jetset.app import App
+
+        config = AppConfig()
+        app = App(config)
+        app.frame = 0
+
+        mock_matrix = MagicMock()
+        mock_canvas = MagicMock()
+
+        with (
+            patch("jetset.app.render_loading") as mock_render,
+            patch("jetset.app.time.sleep"),
+        ):
+            app._render_loading(mock_matrix, mock_canvas)
+
+        mock_render.assert_called_once_with(mock_canvas, 0)
+        mock_matrix.SwapOnVSync.assert_called_once_with(mock_canvas)
+        assert app.frame == 1
