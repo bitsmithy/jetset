@@ -100,10 +100,23 @@ class AdsbLolAdapter(FlightAPI):
                 aircraft_track = d.get("track", 0)
                 aircraft_position = Position(d.get("lat", 0), d.get("lon", 0))
                 route = self._fetch_route(callsign)
-                if route and route.plausible(aircraft_track, aircraft_position, max_xtd):
-                    self._route_cache.put(callsign, route)
-                else:
-                    route = None
+                if route:
+                    xtd = route.cross_track_distance(aircraft_position)
+                    diff = abs(aircraft_track - route.bearing)
+                    bearing_diff = min(diff, 360 - diff)
+                    plausible = bearing_diff <= 60 and xtd <= max_xtd
+                    logger.debug(
+                        "Route %s→%s: track=%s bearing=%s diff=%s° xtd=%s NM "
+                        "max_xtd=%s → %s",
+                        route.origin.iata_code, route.destination.iata_code,
+                        aircraft_track, route.bearing,
+                        round(bearing_diff, 1), round(xtd, 1), max_xtd,
+                        "ACCEPTED" if plausible else "REJECTED",
+                    )
+                    if plausible:
+                        self._route_cache.put(callsign, route)
+                    else:
+                        route = None
 
             if route is not None:
                 enriched.append({**d, "route": route})

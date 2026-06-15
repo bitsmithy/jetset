@@ -70,6 +70,9 @@ class App:
         self._after_render(matrix, canvas)
 
     def loop(self, matrix: RGBMatrix, canvas: Canvas):
+        # Show LOADING immediately while the first fetch runs
+        self._render_loading(matrix, canvas)
+
         try:
             while True:
                 if self._should_fetch():
