@@ -1,6 +1,6 @@
 """Tests for the Flight model."""
 
-from jetset.models import Flight
+from jetset.models import Airport, Flight, FlightRoute, Position
 
 
 class TestFlightLabel:
@@ -11,7 +11,13 @@ class TestFlightLabel:
         assert flight.flight_label() == "UAL2337"
 
     def test_route_label_when_both_set(self) -> None:
-        flight = Flight(callsign="UAL2337", origin="SFO", destination="LAX")
+        flight = Flight(
+            callsign="UAL2337",
+            route=FlightRoute(
+                Airport("SFO", Position(37.62, -122.38)),
+                Airport("LAX", Position(33.94, -118.41)),
+            ),
+        )
         assert flight.route_label() == "SFO→LAX"
 
     def test_route_label_when_missing(self) -> None:
