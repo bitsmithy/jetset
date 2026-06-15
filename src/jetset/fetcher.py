@@ -1,14 +1,9 @@
 from collections.abc import Sequence
-from typing import Any, NamedTuple, Protocol
+from typing import Any, Protocol
 
 import requests
 
-from jetset.models import Flight
-
-
-class Route(NamedTuple):
-    origin: str
-    destination: str
+from jetset.models import Airport, Flight, FlightRoute, Position
 
 
 class RequestsAPI(requests.Session):
@@ -37,22 +32,34 @@ class AdsbLolAdapter(FlightAPI):
         self._flight_api = RequestsAPI("https://api.adsb.lol/v2")
         self._route_api = RequestsAPI("https://api.adsbdb.com/v0")
 
-    def _fetch_route(self, callsign: str) -> Route | None:
+    def _fetch_route(self, callsign: str) -> FlightRoute | None:
         try:
             with self._route_api as api:
                 if route_data := api.get(f"/callsign/{callsign}").json():
                     route_resp = route_data.get("response", {})
                     if isinstance(route_resp, dict):
                         route = route_resp.get("flightroute", {})
-                        origin = route.get("origin", {}).get("iata_code")
-                        destination = route.get("destination", {}).get("iata_code")
+                        origin = Airport(
+                            route.get("origin", {}).get("iata_code"),
+                            Position(
+                                route.get("origin", {}).get("latitude"),
+                                route.get("origin", {}).get("longitude"),
+                            ),
+                        )
+                        destination = Airport(
+                            route.get("destination", {}).get("iata_code"),
+                            Position(
+                                route.get("destination", {}).get("latitude"),
+                                route.get("destination", {}).get("longitude"),
+                            ),
+                        )
 
-                        return Route(origin, destination)
+                        return FlightRoute(origin, destination)
         except (requests.exceptions.RequestException, ValueError) as e:
             print(f"[{type(self).__name__}] Error fetching route for callsign {callsign}: {e}")
 
-    def _enrich_routes(self, flight_data: list[Any], max_flights: int = 5):
-        route_map: dict[str, Route] = {}
+    def _enrich_routes(self, flight_data: list[Any], max_flights: int = 5, max_xtd: float = 100):
+        route_map: dict[str, FlightRoute] = {}
         enriched = []
         seen: set[str] = set()
 
@@ -64,16 +71,17 @@ class AdsbLolAdapter(FlightAPI):
                 continue
 
             if callsign in seen:
-                d["origin"] = route_map[callsign].origin
-                d["destination"] = route_map[callsign].destination
+                d["route"] = route_map[callsign]
                 enriched.append(d)
             else:
                 seen.add(callsign)
                 if route := self._fetch_route(callsign):
-                    route_map[callsign] = route
-                    d["origin"] = route.origin
-                    d["destination"] = route.destination
-                    enriched.append(d)
+                    aircraft_track = d.get("track", 0)
+                    aircraft_position = Position(d.get("lat", 0), d.get("lon", 0))
+                    if route.plausible(aircraft_track, aircraft_position, max_xtd):
+                        route_map[callsign] = route
+                        d["route"] = route
+                        enriched.append(d)
 
         return enriched
 
@@ -86,8 +94,7 @@ class AdsbLolAdapter(FlightAPI):
 
     @staticmethod
     def json_to_flight(data: dict) -> Flight:
-        origin = data.get("origin")
-        destination = data.get("destination")
+        route = data.get("route")
         callsign = data.get("flight", "").rstrip()
         aircraft = data.get("t")
         altitude = data.get("alt_baro")
@@ -97,8 +104,7 @@ class AdsbLolAdapter(FlightAPI):
 
         return Flight(
             callsign=callsign,
-            origin=origin,
-            destination=destination,
+            route=route,
             aircraft=aircraft,
             altitude=altitude,
             speed=speed,
@@ -115,7 +121,7 @@ class AdsbLolAdapter(FlightAPI):
             with self._flight_api as api:
                 if data := api.get(f"/point/{lat}/{lon}/{range_nm}").json():
                     airborne = [a for a in data["ac"] if self._is_airborne(a)]
-                    enriched = self._enrich_routes(airborne, max_flights=5)
+                    enriched = self._enrich_routes(airborne, max_flights=5, max_xtd=range_nm)
 
                     if raw:
                         return enriched
