@@ -410,3 +410,40 @@ class TestAdsbLolFixture:
 
         # Fixture data has origin/destination string keys but not FlightRoute objects
         assert all(f.route is None for f in flights)
+
+
+class TestParseAirport:
+    def test_parses_valid_dict(self) -> None:
+        from jetset.fetcher import AdsbLolAdapter
+        from jetset.models import Airport
+
+        data = {"iata_code": "SFO", "latitude": 37.62, "longitude": -122.38}
+        result = AdsbLolAdapter._parse_airport(data)
+
+        assert isinstance(result, Airport)
+        assert result.iata_code == "SFO"
+        assert result.position.latitude == 37.62
+        assert result.position.longitude == -122.38
+
+    def test_returns_none_when_missing_iata(self) -> None:
+        from jetset.fetcher import AdsbLolAdapter
+
+        data = {"latitude": 37.62, "longitude": -122.38}
+        assert AdsbLolAdapter._parse_airport(data) is None
+
+    def test_returns_none_when_missing_latitude(self) -> None:
+        from jetset.fetcher import AdsbLolAdapter
+
+        data = {"iata_code": "SFO", "longitude": -122.38}
+        assert AdsbLolAdapter._parse_airport(data) is None
+
+    def test_returns_none_when_missing_longitude(self) -> None:
+        from jetset.fetcher import AdsbLolAdapter
+
+        data = {"iata_code": "SFO", "latitude": 37.62}
+        assert AdsbLolAdapter._parse_airport(data) is None
+
+    def test_returns_none_for_empty_dict(self) -> None:
+        from jetset.fetcher import AdsbLolAdapter
+
+        assert AdsbLolAdapter._parse_airport({}) is None
