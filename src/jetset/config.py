@@ -8,7 +8,7 @@ class AppConfig:
     # IAH
     home_lat: float = 29.9931
     home_lon: float = -95.3416
-    range: int = 100
+    range: int = 200
     pause: int = 2
     refresh: int = 60
     api_source: str = "adsblol"

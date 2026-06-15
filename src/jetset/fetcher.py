@@ -1,9 +1,12 @@
+import logging
 from collections.abc import Sequence
 from typing import Any, Protocol
 
 import requests
 
 from jetset.models import Airport, Flight, FlightRoute, Position
+
+logger = logging.getLogger(__name__)
 
 
 class RequestsAPI(requests.Session):
@@ -35,6 +38,7 @@ class AdsbLolAdapter(FlightAPI):
     def _fetch_route(self, callsign: str) -> FlightRoute | None:
         try:
             with self._route_api as api:
+                logger.debug("Fetching route for callsign %s", callsign)
                 if route_data := api.get(f"/callsign/{callsign}").json():
                     route_resp = route_data.get("response", {})
                     if isinstance(route_resp, dict):
@@ -56,7 +60,7 @@ class AdsbLolAdapter(FlightAPI):
 
                         return FlightRoute(origin, destination)
         except (requests.exceptions.RequestException, ValueError) as e:
-            print(f"[{type(self).__name__}] Error fetching route for callsign {callsign}: {e}")
+            logger.warning("Error fetching route for callsign %s: %s", callsign, e)
 
     def _enrich_routes(self, flight_data: list[Any], max_flights: int = 5, max_xtd: float = 100):
         route_map: dict[str, FlightRoute] = {}
@@ -119,6 +123,8 @@ class AdsbLolAdapter(FlightAPI):
         range_nm = range / 1.852  # km -> nautical miles
         try:
             with self._flight_api as api:
+                logger.debug("Fetching nearby flights at (%.4f, %.4f) within %d NM",
+                             lat, lon, range_nm)
                 if data := api.get(f"/point/{lat}/{lon}/{range_nm}").json():
                     airborne = [a for a in data["ac"] if self._is_airborne(a)]
                     enriched = self._enrich_routes(airborne, max_flights=5, max_xtd=range_nm)
@@ -129,6 +135,6 @@ class AdsbLolAdapter(FlightAPI):
                         return [self.json_to_flight(f) for f in enriched]
 
         except (requests.exceptions.RequestException, ValueError) as e:
-            print(f"[{type(self).__name__}] Error fetching nearby flights: {e}")
+            logger.warning("Error fetching nearby flights: %s", e)
 
         return flights
