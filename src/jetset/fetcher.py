@@ -4,26 +4,10 @@ from typing import Any, Protocol
 
 import requests
 
+from jetset.http import RequestsAPI
 from jetset.models import Airport, Flight, FlightRoute, Position
 
 logger = logging.getLogger(__name__)
-
-
-class RequestsAPI(requests.Session):
-    def __init__(
-        self, base_url: str | None = None, headers: dict[str, str] | None = None, *args, **kwargs
-    ):
-        super().__init__(*args, **kwargs)
-        self.base_url = base_url
-
-        if headers:
-            self.headers.update(headers)
-
-    def request(self, method, url, *args, **kwargs):
-        if self.base_url:
-            url: str = self.base_url.rstrip("/") + url
-
-        return super().request(method, url, *args, **kwargs)
 
 
 class FlightAPI(Protocol):
@@ -123,8 +107,9 @@ class AdsbLolAdapter(FlightAPI):
         range_nm = range / 1.852  # km -> nautical miles
         try:
             with self._flight_api as api:
-                logger.debug("Fetching nearby flights at (%.4f, %.4f) within %d NM",
-                             lat, lon, range_nm)
+                logger.debug(
+                    "Fetching nearby flights at (%.4f, %.4f) within %d NM", lat, lon, range_nm
+                )
                 if data := api.get(f"/point/{lat}/{lon}/{range_nm}").json():
                     airborne = [a for a in data["ac"] if self._is_airborne(a)]
                     enriched = self._enrich_routes(airborne, max_flights=5, max_xtd=range_nm)
