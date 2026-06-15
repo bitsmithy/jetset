@@ -1,5 +1,7 @@
 import logging
+import time
 from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Any, Protocol
 
 import requests
@@ -10,6 +12,31 @@ from jetset.models import Airport, Flight, FlightRoute, Position
 logger = logging.getLogger(__name__)
 
 
+class RouteCache:
+    @dataclass(frozen=True)
+    class CacheEntry:
+        timestamp: float
+        route: FlightRoute
+
+    def __init__(self, ttl: int = 900) -> None:
+        self.cache: dict[str, self.CacheEntry] = {}
+        self.ttl = ttl
+
+    def get(self, callsign: str) -> FlightRoute | None:
+        entry = self.cache.get(callsign)
+
+        if entry:
+            now = time.time()
+            if now - entry.timestamp <= self.ttl:
+                return entry.route
+
+    def put(self, callsign: str, route: FlightRoute) -> None:
+        self.cache[callsign] = self.CacheEntry(time.time(), route)
+
+    def clear(self) -> None:
+        self.cache = {}
+
+
 class FlightAPI(Protocol):
     def nearby_flights(self, lat: float, lon: float, range: int, raw: bool) -> Sequence[Flight]: ...
 
@@ -18,6 +45,7 @@ class AdsbLolAdapter(FlightAPI):
     def __init__(self) -> None:
         self._flight_api = RequestsAPI("https://api.adsb.lol/v2")
         self._route_api = RequestsAPI("https://api.adsbdb.com/v0")
+        self._route_cache = RouteCache()
 
     def _fetch_route(self, callsign: str) -> FlightRoute | None:
         try:
@@ -47,9 +75,7 @@ class AdsbLolAdapter(FlightAPI):
             logger.warning("Error fetching route for callsign %s: %s", callsign, e)
 
     def _enrich_routes(self, flight_data: list[Any], max_flights: int = 5, max_xtd: float = 100):
-        route_map: dict[str, FlightRoute] = {}
         enriched = []
-        seen: set[str] = set()
 
         for d in flight_data:
             if len(enriched) >= max_flights:
@@ -58,18 +84,18 @@ class AdsbLolAdapter(FlightAPI):
             if not callsign:
                 continue
 
-            if callsign in seen:
-                d["route"] = route_map[callsign]
-                enriched.append(d)
-            else:
-                seen.add(callsign)
-                if route := self._fetch_route(callsign):
-                    aircraft_track = d.get("track", 0)
-                    aircraft_position = Position(d.get("lat", 0), d.get("lon", 0))
-                    if route.plausible(aircraft_track, aircraft_position, max_xtd):
-                        route_map[callsign] = route
-                        d["route"] = route
-                        enriched.append(d)
+            route = self._route_cache.get(callsign)
+            if route is None:
+                aircraft_track = d.get("track", 0)
+                aircraft_position = Position(d.get("lat", 0), d.get("lon", 0))
+                route = self._fetch_route(callsign)
+                if route and route.plausible(aircraft_track, aircraft_position, max_xtd):
+                    self._route_cache.put(callsign, route)
+                else:
+                    route = None
+
+            if route is not None:
+                enriched.append({**d, "route": route})
 
         return enriched
 
