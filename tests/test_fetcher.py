@@ -242,7 +242,7 @@ class TestRoutePlausible:
         assert iah_bog.plausible(140.0, Position(29.99, -95.34), 100)
 
     def test_enrich_routes_rejects_implausible_route(self) -> None:
-        from unittest.mock import MagicMock, patch
+        from unittest.mock import patch
 
         from jetset.fetcher import AdsbLolAdapter
         from jetset.models import Airport, FlightRoute, Position
@@ -265,7 +265,7 @@ class TestRoutePlausible:
         assert "route" not in aircraft
 
     def test_enrich_routes_accepts_plausible_route(self) -> None:
-        from unittest.mock import MagicMock, patch
+        from unittest.mock import patch
 
         from jetset.fetcher import AdsbLolAdapter
         from jetset.models import Airport, FlightRoute, Position
@@ -290,7 +290,7 @@ class TestRoutePlausible:
         assert result[0]["route"].origin.iata_code == "IAH"
 
     def test_enrich_routes_respects_custom_range(self) -> None:
-        from unittest.mock import MagicMock, patch
+        from unittest.mock import patch
 
         from jetset.fetcher import AdsbLolAdapter
         from jetset.models import Airport, FlightRoute, Position
