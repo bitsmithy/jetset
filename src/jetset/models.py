@@ -1,6 +1,9 @@
+import logging
 import math
 from collections import deque
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -12,6 +15,21 @@ class Flight:
     speed: int | None = None
     track: float | None = None
     vertical_rate: int | None = None
+
+    def __post_init__(self) -> None:
+        logger.debug(
+            "Flight(callsign=%s, aircraft=%s, origin=%s, "
+            "destination=%s, altitude=%s, speed=%s, track=%s, "
+            "vertical_rate=%s)",
+            self.callsign,
+            self.aircraft,
+            self.route.origin.iata_code if self.route else None,
+            self.route.destination.iata_code if self.route else None,
+            self.altitude,
+            self.speed,
+            self.track,
+            self.vertical_rate,
+        )
 
     @property
     def airline(self) -> str:
@@ -94,6 +112,13 @@ class FlightRoute:
     destination: Airport
 
     EARTH_RADIUS = 3440.065  # in nautical miles
+
+    def __post_init__(self) -> None:
+        logger.debug(
+            "FlightRoute(origin=%s, destination=%s)",
+            self.origin.iata_code,
+            self.destination.iata_code,
+        )
 
     @property
     def bearing(self) -> float:
