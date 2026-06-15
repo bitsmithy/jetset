@@ -47,30 +47,38 @@ class AdsbLolAdapter(FlightAPI):
         self._route_api = RequestsAPI("https://api.adsbdb.com/v0")
         self._route_cache = RouteCache()
 
+    @staticmethod
+    def _parse_airport(data: dict) -> Airport | None:
+        code = data.get("iata_code")
+        lat = data.get("latitude")
+        lon = data.get("longitude")
+
+        if code and lat is not None and lon is not None:
+            return Airport(code, Position(lat, lon))
+
     def _fetch_route(self, callsign: str) -> FlightRoute | None:
         try:
             with self._route_api as api:
                 logger.debug("Fetching route for callsign %s", callsign)
-                if route_data := api.get(f"/callsign/{callsign}").json():
-                    route_resp = route_data.get("response", {})
-                    if isinstance(route_resp, dict):
-                        route = route_resp.get("flightroute", {})
-                        origin = Airport(
-                            route.get("origin", {}).get("iata_code"),
-                            Position(
-                                route.get("origin", {}).get("latitude"),
-                                route.get("origin", {}).get("longitude"),
-                            ),
-                        )
-                        destination = Airport(
-                            route.get("destination", {}).get("iata_code"),
-                            Position(
-                                route.get("destination", {}).get("latitude"),
-                                route.get("destination", {}).get("longitude"),
-                            ),
-                        )
+                data = api.get(f"/callsign/{callsign}").json()
+                if not data:
+                    return None
 
-                        return FlightRoute(origin, destination)
+                route_resp = data.get("response", {})
+                if not isinstance(route_resp, dict):
+                    return None
+
+                flight_route = route_resp.get("flightroute")
+                if not flight_route:
+                    return None
+
+                route = route_resp.get("flightroute", {})
+                origin = self._parse_airport(route.get("origin", {}))
+                destination = self._parse_airport(route.get("destination", {}))
+
+                if origin and destination:
+                    return FlightRoute(origin, destination)
+
         except (requests.exceptions.RequestException, ValueError) as e:
             logger.warning("Error fetching route for callsign %s: %s", callsign, e)
 
