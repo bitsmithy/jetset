@@ -64,6 +64,26 @@ class TestAppSafeFetch:
         assert len(app.buffer) == 0
 
 
+class TestAppFetchLoop:
+    def test_runs_a_fetch_cycle_then_honors_stop(self) -> None:
+        from unittest.mock import patch
+
+        from jetset.app import App
+
+        app = App(AppConfig())
+
+        # One cycle: fetch is due so _safe_fetch runs, then the stop event is
+        # set during the inter-cycle wait so the loop exits (no infinite spin).
+        with (
+            patch.object(app, "_should_fetch", return_value=True),
+            patch.object(app, "_safe_fetch") as mock_fetch,
+            patch.object(app._stop, "wait", side_effect=lambda *_a: app._stop.set()),
+        ):
+            app._fetch_loop()
+
+        mock_fetch.assert_called_once()
+
+
 class TestAppCurrentFrame:
     def test_selects_flight_and_metric_page(self) -> None:
         from jetset.app import App
