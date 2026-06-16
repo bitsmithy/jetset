@@ -1,4 +1,5 @@
-"""Minimal emulator smoke test — proves the LED matrix emulator works."""
+"""Entry point: fetch nearby flights from AirLabs and render the flight board
+on the LED matrix (real rpi-rgb-led-matrix on the Pi, emulator elsewhere)."""
 
 import logging
 import os
