@@ -1,0 +1,17 @@
+[Unit]
+Description=Jetset FlightWall
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/hao/jetset
+Environment=PATH=/home/hao/.local/bin:/usr/bin:/bin
+Environment=JETSET_DEBUG=1
+ExecStart=/home/hao/.local/bin/uv run python -m jetset
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
