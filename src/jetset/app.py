@@ -122,7 +122,9 @@ class App:
         return self._after_render(matrix, canvas)
 
     def _render_loading(self, matrix: RGBMatrix, canvas: Canvas) -> Canvas:
-        render_loading(canvas, self.frame)
+        # % 4 so the "LOADING." dots keep cycling instead of freezing on
+        # "LOADING" once the frame counter passes 3.
+        render_loading(canvas, self.frame % self.PAGES_PER_FLIGHT)
         return self._after_render(matrix, canvas)
 
     def loop(self, matrix: RGBMatrix, canvas: Canvas):

@@ -190,3 +190,18 @@ class TestAppLoading:
         mock_matrix.SwapOnVSync.assert_called_once_with(mock_canvas)
         assert app.frame == 1
         assert next_canvas is mock_matrix.SwapOnVSync.return_value
+
+    def test_loading_animation_cycles_with_frame(self) -> None:
+        from jetset.app import App
+
+        app = App(AppConfig())
+        app.frame = 5  # past the first cycle — must wrap, not freeze on "LOADING"
+
+        with (
+            patch("jetset.app.render_loading") as mock_render,
+            patch("jetset.app.time.sleep"),
+        ):
+            app._render_loading(MagicMock(), MagicMock())
+
+        # 5 % 4 == 1 → "LOADING." so the dots keep animating
+        assert mock_render.call_args.args[1] == 1
