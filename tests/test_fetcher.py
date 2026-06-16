@@ -423,6 +423,24 @@ class TestRefreshFlight:
         # Route should be preserved from the original
         assert refreshed.route is route
 
+    def test_returns_original_when_no_aircraft_in_response(self) -> None:
+        # The callsign endpoint can return valid JSON with an empty "ac" list
+        # when the aircraft is no longer airborne; keep the stale flight.
+        from unittest.mock import MagicMock, patch
+
+        from jetset.fetcher import AdsbLolAdapter
+        from jetset.models import Flight
+
+        adapter = AdsbLolAdapter()
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"ac": [], "total": 0}
+        existing = Flight(callsign="UCA4237", altitude=35000, speed=450)
+
+        with patch.object(adapter._flight_api, "get", return_value=mock_resp):
+            refreshed = adapter.refresh_flight(existing)
+
+        assert refreshed is existing
+
 
 class TestAdsbLolFixture:
     def test_parses_all_fixture_flights(self) -> None:
