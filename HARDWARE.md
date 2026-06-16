@@ -68,3 +68,27 @@
 4. Plug 5V 4A supply into HAT's barrel jack (powers panel)
 5. Plug micro USB into Pi from phone charger (powers Pi)
 6. SSH in, install software, run
+
+## Panel notes & troubleshooting
+
+Hard-won lessons from bring-up:
+
+- **`gpio_slowdown = 5` is required** on the Pi 3 A+ / Adafruit HAT. At `4` the
+  signal is unstable: a static image renders correctly for a moment, then
+  corrupts into scrambled pixels (it masquerades as a "bad pixel mapping").
+  `5` holds steady. Configurable via `hardware.gpio_slowdown`.
+- **Use INDOOR, standard 1/16-scan panels.** They map 1:1 and work with the
+  defaults (`multiplexing=0`, `row_address_type=0`). **Avoid OUTDOOR /
+  multiplexed panels** — they use scrambled internal wiring that needs a custom
+  multiplex-mapper compiled into rpi-rgb-led-matrix (see hzeller issue #1640).
+- **`rgb_sequence`** defaults to `"RGB"` (standard). Override per-panel (e.g.
+  `"RBG"`) only if red/green/blue come out swapped.
+- **The original test panel was defective** (a generic P2.5 64×32 "outdoor"
+  1/16-scan unit): dead blue channel, underpowered green, and red-channel
+  crosstalk that garbled any combination color at full brightness. Single red
+  and green rendered fine; it was replaced with a standard indoor panel.
+- **Bring-up tooling:** `scripts/probe-*.py` and `scripts/*-sweep.sh` drive a
+  panel directly via rgbmatrix to characterize geometry, scan/multiplexing,
+  color channels, and signal stability — independent of the app. Start with
+  `panel-colors.py` to confirm the three channels, then `probe-text.py` for the
+  real 4-row layout.
