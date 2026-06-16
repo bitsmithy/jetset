@@ -65,4 +65,4 @@ else
     echo "=== rgbmatrix wheel already built ==="
 fi
 
-echo "=== Setup complete! Run \`make start\` ==="
+echo "=== Setup complete! Run \`make run-pi\` ==="

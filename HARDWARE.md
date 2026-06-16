@@ -111,4 +111,4 @@ When swapping in a replacement panel (reuse the same HAT + ribbon cable):
 4. **Restore the palette:** in `renderer.render_flight_card`, switch the four
    rows back to `ORANGE` / `CYAN` / `GREEN` / `BLUE`, and set
    `hardware_rgb_sequence` to `"RGB"` (or whatever step 2 found).
-5. **Live app:** `make start` — confirm flight cards render in full color.
+5. **Live app:** `make run-pi` — confirm flight cards render in full color.
