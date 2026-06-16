@@ -22,9 +22,15 @@ uv sync
 
 | Command | What it does |
 |---|---|
-| `make run` | Run the display emulator at http://localhost:8888/ |
+| `make run` | Run the display in the emulator at http://localhost:8888/ |
+| `make debug` | Run the emulator with debug logging |
 | `make test` | Run tests (pytest) |
 | `make lint` | Lint check (ruff) |
+| `make fixtures` | Save a live AirLabs response as a test fixture |
+| `make deploy` | rsync the code to the Pi |
+| `make setup-pi` | Install deps + build rpi-rgb-led-matrix (run on the Pi) |
+| `make run-pi` | Run the app on the Pi (needs root for GPIO) |
+| `make debug-pi` | Run on the Pi with debug logging |
 
 ## Configuration
 

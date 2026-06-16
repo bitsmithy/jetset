@@ -93,6 +93,7 @@ name = "jetset"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "requests" },
     { name = "rgbmatrixemulator" },
@@ -101,12 +102,12 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "pytest" },
-    { name = "python-dotenv" },
     { name = "ruff" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "pyyaml", specifier = ">=6" },
     { name = "requests", specifier = ">=2.34.2" },
     { name = "rgbmatrixemulator", specifier = ">=0.18.1" },
@@ -115,7 +116,6 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "pytest", specifier = ">=9.0.3" },
-    { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "ruff", specifier = ">=0.15.16" },
 ]
 
