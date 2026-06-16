@@ -34,6 +34,23 @@ class TestConfigDefaults:
         config = AppConfig.load()
         assert config.refresh > 0
 
+    def test_default_panel_type_is_empty(self) -> None:
+        # Empty = the library's default (no chip-specific init sequence). The
+        # P2.5 64x32 panel renders correctly without one; see panel-diag sweep.
+        config = AppConfig.load()
+        assert config.hardware_panel_type == ""
+
+    def test_default_gpio_slowdown(self) -> None:
+        # Pi 3 A+ / Adafruit HAT needs 5 for a stable signal; 4 corrupted output.
+        config = AppConfig.load()
+        assert config.hardware_gpio_slowdown == 5
+
+    def test_default_rgb_sequence(self) -> None:
+        # "RGB" is the standard order; panels with a different physical subpixel
+        # order override it via config.
+        config = AppConfig.load()
+        assert config.hardware_rgb_sequence == "RGB"
+
 
 class TestConfigFromYaml:
     def test_loads_custom_yaml(self, tmp_path: Path) -> None:
@@ -53,6 +70,19 @@ class TestConfigFromYaml:
         assert config.range == 80
         assert config.pause == 4
         assert config.refresh == 15
+
+    def test_loads_custom_hardware_section(self, tmp_path: Path) -> None:
+        yaml_content = {
+            "hardware": {"panel_type": "FM6127", "gpio_slowdown": 2, "rgb_sequence": "RGB"}
+        }
+        config_path = tmp_path / "config.yaml"
+        with open(config_path, "w") as f:
+            yaml.dump(yaml_content, f)
+
+        config = AppConfig.load(str(config_path))
+        assert config.hardware_panel_type == "FM6127"
+        assert config.hardware_gpio_slowdown == 2
+        assert config.hardware_rgb_sequence == "RGB"
 
     def test_api_source_defaults_to_adsblol(self) -> None:
         config = AppConfig.load()
