@@ -24,6 +24,7 @@ JETSET_PATH ?= /home/$(JETSET_USER)/jetset
 deploy: ## rsync code to Pi
 	rsync -avz --exclude '.venv' --exclude '__pycache__' --exclude '.git' \
 		--exclude '*.pyc' --exclude 'wheels' \
+		--exclude '.pytest_cache' --exclude '.ruff_cache' \
 		. $(JETSET_USER)@$(JETSET_HOST):$(JETSET_PATH)/
 
 setup-pi: ## Install deps and build rpi-rgb-led-matrix (run on the Pi)
