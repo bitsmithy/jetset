@@ -46,10 +46,18 @@ class TestConfigDefaults:
         assert config.hardware_gpio_slowdown == 5
 
     def test_default_rgb_sequence(self) -> None:
-        # "RGB" is the standard order; panels with a different physical subpixel
-        # order override it via config.
+        # The panel currently deployed needs "RBG"; standard panels use "RGB".
         config = AppConfig.load()
-        assert config.hardware_rgb_sequence == "RGB"
+        assert config.hardware_rgb_sequence == "RBG"
+
+    def test_default_multiplexing(self) -> None:
+        config = AppConfig.load()
+        assert config.hardware_multiplexing == 0
+
+    def test_default_row_address_type(self) -> None:
+        # Standard 1/16-scan addressing; 1 collapsed the image to two lines.
+        config = AppConfig.load()
+        assert config.hardware_row_address_type == 0
 
 
 class TestConfigFromYaml:
