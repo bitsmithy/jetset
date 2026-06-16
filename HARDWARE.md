@@ -91,11 +91,12 @@ Hard-won lessons from bring-up:
   incompatibility (it addresses correctly and drives red perfectly). The app
   currently renders every row red as a workaround; replace with a standard
   indoor panel and restore the palette.
-- **Bring-up tooling:** `scripts/probe-*.py` and `scripts/*-sweep.sh` drive a
-  panel directly via rgbmatrix to characterize geometry, scan/multiplexing,
-  color channels, and signal stability — independent of the app. Start with
-  `panel-colors.py` to confirm the three channels, then `probe-text.py` for the
-  real 4-row layout.
+- **Bring-up tooling:** `scripts/panel-colors.py` (solid red/green/blue/white
+  fills to confirm the three channels) and `scripts/probe-text.py` (the real
+  4-row text layout) drive a panel directly via rgbmatrix, independent of the
+  app. Run colors first, then text. (The many one-off probes/sweeps used to
+  characterize the original faulty panel were removed once diagnosed — see git
+  history if you need them again.)
 
 ### Verifying a new panel
 
