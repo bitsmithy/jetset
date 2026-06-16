@@ -13,42 +13,29 @@ class TestFlightLabel:
         assert flight_label(flight) == "UAL2337"
 
 class TestFlightBuffer:
-    def test_push_and_retrieve(self) -> None:
+    def test_set_all_replaces_contents(self) -> None:
         from jetset.models import FlightBuffer
 
-        buf = FlightBuffer(maxlen=3)
-        f1 = Flight(callsign="UAL2337")
-        buf.push(f1)
-        assert len(buf) == 1
-        assert buf.flights == [f1]
+        buf = FlightBuffer()
+        buf.set_all([Flight(callsign="UAL2337"), Flight(callsign="SWA45")])
 
-    def test_replace_updates_existing_flight_by_callsign(self) -> None:
-        from jetset.models import FlightBuffer
-
-        buf = FlightBuffer(maxlen=3)
-        buf.push(Flight(callsign="UAL2337", altitude=35000))
-        replacement = Flight(callsign="UAL2337", altitude=37000)
-
-        buf.replace("UAL2337", replacement)
-
-        assert len(buf) == 1
-        assert buf.flights[0].altitude == 37000
-
-    def test_deduplicates_by_callsign(self) -> None:
-        from jetset.models import FlightBuffer
-
-        buf = FlightBuffer(maxlen=3)
-        buf.push(Flight(callsign="UAL2337"))
-        buf.push(Flight(callsign="UAL2337"))
-        assert len(buf) == 1
-
-    def test_respects_maxlen(self) -> None:
-        from jetset.models import FlightBuffer
-
-        buf = FlightBuffer(maxlen=2)
-        buf.push(Flight(callsign="UAL2337"))
-        buf.push(Flight(callsign="AAL100"))
-        buf.push(Flight(callsign="SWA450"))
         assert len(buf) == 2
-        assert buf.flights[0].callsign == "AAL100"
-        assert buf.flights[1].callsign == "SWA450"
+        assert [f.callsign for f in buf.flights] == ["UAL2337", "SWA45"]
+
+    def test_set_all_overwrites_previous_batch(self) -> None:
+        from jetset.models import FlightBuffer
+
+        buf = FlightBuffer()
+        buf.set_all([Flight(callsign="UAL2337")])
+        buf.set_all([Flight(callsign="AAL100"), Flight(callsign="SWA45")])
+
+        assert [f.callsign for f in buf.flights] == ["AAL100", "SWA45"]
+
+    def test_flights_returns_a_copy(self) -> None:
+        from jetset.models import FlightBuffer
+
+        buf = FlightBuffer()
+        buf.set_all([Flight(callsign="UAL2337")])
+        buf.flights.append(Flight(callsign="SWA45"))
+
+        assert len(buf) == 1

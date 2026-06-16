@@ -8,15 +8,15 @@ from scripts.save_fixtures import FixtureProvider
 
 class TestFixtureProviderSave:
     def test_saves_keyless_adapter_without_api_key(self, tmp_path) -> None:
-        from jetset.fetcher import AdsbLolAdapter
+        from jetset.fetcher import AirLabsAdapter
 
         mock_data = [{"flight": "UAL1170 "}]
 
         with patch("scripts.save_fixtures.os.environ.get", return_value=None), \
-                patch.object(AdsbLolAdapter, "nearby_flights", return_value=mock_data):
+                patch.object(AirLabsAdapter, "nearby_flights", return_value=mock_data):
             with patch("scripts.save_fixtures.FIXTURES_DIR", str(tmp_path)):
-                provider = FixtureProvider(AdsbLolAdapter)
+                provider = FixtureProvider(AirLabsAdapter)
                 provider.save(AppConfig())
 
-        expected_file = tmp_path / "adsblol_response.json"
+        expected_file = tmp_path / "airlabs_response.json"
         assert expected_file.exists()

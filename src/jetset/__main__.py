@@ -27,6 +27,14 @@ def _configure_logging() -> None:
 def main() -> None:
     _configure_logging()
 
+    # Load AIRLABS_API_KEY (and friends) from a .env file if present.
+    try:
+        from dotenv import load_dotenv
+
+        load_dotenv()
+    except ImportError:
+        pass
+
     config = AppConfig.load(os.environ.get("JETSET_CONFIG"))
 
     from jetset.backend import IS_HARDWARE, RGBMatrix, RGBMatrixOptions

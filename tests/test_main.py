@@ -85,67 +85,47 @@ class TestAppFetchLoop:
 
 
 class TestAppCurrentFrame:
-    def test_selects_flight_and_metric_page(self) -> None:
+    def test_cycles_window_flights_through_metric_pages(self) -> None:
         from jetset.app import App
 
-        config = AppConfig()
-        app = App(config)
-        app.buffer.push(Flight(callsign="UAL2337"))
-        app.buffer.push(Flight(callsign="SWA45"))
+        app = App(AppConfig())
+        app.buffer.set_all([Flight(callsign="UAL2337"), Flight(callsign="SWA45")])
+        app.last_fetch = 1000.0
 
         frames: list[tuple[str, int]] = []
-        for frame_idx in range(8):
-            app.frame = frame_idx
-            result = app._current_frame()
-            assert result is not None
-            frames.append((result.flight.callsign, result.metric_page))
+        # elapsed == 0 → window_start == 0, so the window is [UAL2337, SWA45].
+        with patch("jetset.app.time.time", return_value=1000.0):
+            for frame_idx in range(8):
+                app.frame = frame_idx
+                result = app._current_frame()
+                frames.append((result.flight.callsign, result.metric_page))
 
         assert frames == [
-            ("UAL2337", 0),
-            ("UAL2337", 1),
-            ("UAL2337", 2),
-            ("UAL2337", 3),
-            ("SWA45", 0),
-            ("SWA45", 1),
-            ("SWA45", 2),
-            ("SWA45", 3),
+            ("UAL2337", 0), ("UAL2337", 1), ("UAL2337", 2), ("UAL2337", 3),
+            ("SWA45", 0), ("SWA45", 1), ("SWA45", 2), ("SWA45", 3),
         ]
+
+    def test_window_slides_over_the_refresh_interval(self) -> None:
+        from jetset.app import App
+
+        app = App(AppConfig())  # refresh = 2700s
+        app.buffer.set_all([Flight(callsign=str(i)) for i in range(10)])
+        app.last_fetch = 0.0
+        app.frame = 0
+
+        # slide_interval = 2700 / 10 = 270s; one slide advances window_start by 1.
+        with patch("jetset.app.time.time", return_value=0.0):
+            assert app._current_frame().flight.callsign == "0"
+        with patch("jetset.app.time.time", return_value=270.0):
+            assert app._current_frame().flight.callsign == "1"
+        with patch("jetset.app.time.time", return_value=540.0):
+            assert app._current_frame().flight.callsign == "2"
 
     def test_empty_buffer_returns_none(self) -> None:
         from jetset.app import App
 
-        config = AppConfig()
-        app = App(config)
-
-        result = app._current_frame()
-        assert result is None
-
-
-class TestAppHistory:
-    def test_refreshes_stale_flights_after_fetch(self) -> None:
-        from unittest.mock import patch
-
-        from jetset.app import App
-
-        config = AppConfig()
-        app = App(config)
-        # Seed buffer with a flight not in the new live set
-        stale = Flight(callsign="UAL2337")
-        app.buffer.push(stale)
-        # Live set returns only one different flight
-        live = [Flight(callsign="SWA45")]
-
-        with (
-            patch.object(app.adapter, "nearby_flights", return_value=live),
-            patch.object(app.adapter, "refresh_flight", return_value=stale) as mock_refresh,
-            patch("jetset.app.time.time", return_value=500),
-        ):
-            app._fetch()
-
-        # SWA45 was pushed to the buffer
-        assert len(app.buffer) == 2
-        # UAL2337 was refreshed via refresh_flight
-        mock_refresh.assert_called_once_with(stale)
+        app = App(AppConfig())
+        assert app._current_frame() is None
 
 
 class TestAppRenderFrame:

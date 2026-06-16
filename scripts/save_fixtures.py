@@ -14,7 +14,7 @@ import sys
 from dataclasses import dataclass
 
 from jetset.config import AppConfig
-from jetset.fetcher import AdsbLolAdapter
+from jetset.fetcher import AirLabsAdapter
 
 FIXTURES_DIR = "tests/fixtures"
 
@@ -62,7 +62,7 @@ class FixtureProvider:
 
 
 FIXTURES: list[type] = [
-    AdsbLolAdapter,
+    AirLabsAdapter,
 ]
 
 

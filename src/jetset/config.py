@@ -10,8 +10,8 @@ class AppConfig:
     home_lon: float = -95.3416
     range: int = 200
     pause: int = 2
-    refresh: int = 60
-    api_source: str = "adsblol"
+    refresh: int = 2700  # 45 min — one AirLabs bbox call per refresh ≈ 960/month
+    api_source: str = "airlabs"
     # Physical LED panel tuning (ignored by the emulator). panel_type is empty
     # by default — the P2.5 64x32 panel needs no chip-specific init sequence.
     # Set it (e.g. "FM6126A") only if a panel comes up garbled without one.
