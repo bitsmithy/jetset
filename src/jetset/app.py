@@ -1,4 +1,5 @@
 import logging
+import threading
 import time
 from typing import NamedTuple
 
@@ -14,6 +15,9 @@ logger = logging.getLogger(__name__)
 
 
 class App:
+    # How often the background fetch thread wakes to check if a refresh is due.
+    _FETCH_POLL_SECONDS = 1.0
+
     class Frame(NamedTuple):
         flight: Flight
         metric_page: int
@@ -24,6 +28,11 @@ class App:
         self.frame = 0
         self.last_fetch: float | None = None
         self.adapter: FlightAPI = _create_adapter(config)
+        # Fetching runs on a background thread so the render loop never blocks
+        # on the (multi-second) network round-trips. _lock guards the shared
+        # buffer; _stop signals the fetch thread to exit.
+        self._lock = threading.Lock()
+        self._stop = threading.Event()
 
     def _should_fetch(self) -> bool:
         now = time.time()
@@ -33,18 +42,24 @@ class App:
             return False
 
     def _fetch(self):
+        # Network calls happen OUTSIDE the lock; the lock is held only for the
+        # fast buffer mutations, so the render thread is never blocked on I/O.
         flights = self.adapter.nearby_flights(
             self.config.home_lat, self.config.home_lon, self.config.range
         )
 
         live_callsigns = {f.callsign for f in flights}
 
-        for f in flights:
-            self.buffer.push(f)
+        with self._lock:
+            for f in flights:
+                self.buffer.push(f)
+            stale = [f for f in self.buffer.flights if f.callsign not in live_callsigns]
 
-        for existing in self.buffer.flights:
-            if existing.callsign not in live_callsigns:
-                self.buffer.replace(existing.callsign, self.adapter.refresh_flight(existing))
+        refreshed = [(f.callsign, self.adapter.refresh_flight(f)) for f in stale]
+
+        with self._lock:
+            for callsign, updated in refreshed:
+                self.buffer.replace(callsign, updated)
 
         self.last_fetch = time.time()
 
@@ -63,14 +78,29 @@ class App:
             logger.exception("Fetch cycle failed; keeping existing flights")
             self.last_fetch = time.time()
 
+    def _fetch_loop(self) -> None:
+        """Background loop: refresh flights when due until stopped.
+
+        Runs on its own thread so the multi-second fetch never blocks the
+        render loop. Polls frequently but only fetches once the refresh
+        interval has elapsed.
+        """
+        while not self._stop.is_set():
+            if self._should_fetch():
+                self._safe_fetch()
+            self._stop.wait(self._FETCH_POLL_SECONDS)
+
     def _current_frame(self) -> Frame | None:
-        if not self.buffer.flights:
+        with self._lock:
+            flights = self.buffer.flights
+
+        if not flights:
             return None
 
-        idx = self.frame // 4 % len(self.buffer.flights)
+        idx = self.frame // 4 % len(flights)
         metric_page = self.frame % 4
 
-        return self.Frame(self.buffer.flights[idx], metric_page)
+        return self.Frame(flights[idx], metric_page)
 
     def _after_render(self, matrix: RGBMatrix, canvas: Canvas) -> Canvas:
         # This needs to be it's own method so that tests don't need to run the infinite loop method.
@@ -91,19 +121,23 @@ class App:
         return self._after_render(matrix, canvas)
 
     def loop(self, matrix: RGBMatrix, canvas: Canvas):
-        # Show LOADING immediately while the first fetch runs
+        # Fetching runs on a background thread; this loop only renders, so the
+        # display keeps cycling smoothly while a fetch is in flight.
         canvas = self._render_loading(matrix, canvas)
+
+        fetch_thread = threading.Thread(
+            target=self._fetch_loop, name="jetset-fetch", daemon=True
+        )
+        fetch_thread.start()
 
         try:
             while True:
-                if self._should_fetch():
-                    self._safe_fetch()
-
                 if frame := self._current_frame():
                     canvas = self._render_frame(matrix, canvas, frame)
                 else:
                     canvas = self._render_loading(matrix, canvas)
         except KeyboardInterrupt:
+            self._stop.set()
             canvas.Clear()
             matrix.SwapOnVSync(canvas)
 
