@@ -40,3 +40,27 @@ hardware:
   row_address_type: 0   # 0 for standard panels; other values for some 1/16-scan panels (e.g. 3)
   rgb_sequence: RBG     # physical subpixel order; "RGB" for a standard panel, "RBG" for the current one
 ```
+
+Flights come from a single source, **AirLabs** (`api_source: airlabs`): one
+`/flights?bbox=` call returns every nearby flight with positions, metrics, and
+route. `AIRLABS_API_KEY` is read from the environment or a `.env` file. The
+free tier allows ~1000 requests/month, so the app refreshes every 45 minutes
+(`refresh: 2700`) — one call per refresh — and the display slides a window
+across all captured flights so fresh aircraft trickle in between refreshes.
+
+## Data source history
+
+How we got to a single AirLabs source (kept here so the decisions aren't relearned):
+
+- **adsb.lol** (free) gave positions/metrics; **adsbdb** (free) gave routes by
+  callsign; a **plausibility filter** (great-circle bearing + cross-track
+  distance, in `geo.py`) tried to reject wrong routes; **hexdb.io** was a free
+  cross-check.
+- Measuring against **FlightAware AeroAPI** (authoritative, `scripts/route-compare.py`)
+  showed adsbdb routes were only ~20% correct, and the plausibility filter had a
+  great-circle bug (a route's *extended* great circle can pass near the receiver,
+  so far-away routes slipped through). hexdb was sparse and years-stale.
+- **AirLabs** matched AeroAPI in testing and returns positions, metrics, and
+  route in one bbox call — so it replaced adsb.lol + adsbdb + hexdb + the
+  plausibility filter. `AdsbLolAdapter` and `geo.py` remain only for the
+  `route-compare` diagnostic and are slated for removal.

@@ -1,24 +1,22 @@
 #!/usr/bin/env python3
-"""Compare route sources against AeroAPI (ground truth).
+"""Validate the app's routes (AirLabs) against AeroAPI ground truth.
 
-Pulls nearby flights through the normal app pipeline (so the "ours" column is
-exactly what the app would display), then for up to 5 callsigns queries:
-  - adsbdb (ours, free)   - what the app shows today
-  - AirLabs (free)        - candidate free source (1000 calls/month)
+Pulls nearby flights through the app's real pipeline (AirLabsAdapter), then for
+up to 5 callsigns compares each route to:
   - AeroAPI (paid, truth) - authoritative, the column to trust
   - hexdb.io (free)       - reference cross-check
 
 AeroAPI costs money (~$0.05/call), so it is OPT-IN: by default this runs free
-sources only. Pass --truth to add the AeroAPI ground-truth column and the two
-✓/✗ scores (adsbdb and AirLabs vs AeroAPI). Hard-capped at 5 callsigns.
+sources only. Pass --truth to add the AeroAPI ground-truth column and the ✓/✗
+score. Hard-capped at 5 callsigns.
 
 Provide keys via the environment or a .env file:
-    AIRLABS_API_KEY (optional, free signup)   AEROAPI_KEY (only for --truth)
+    AIRLABS_API_KEY (required, free)    AEROAPI_KEY (only for --truth)
 Run:
     uv run python scripts/route-compare.py            # free sources only
     uv run python scripts/route-compare.py --truth    # adds paid AeroAPI
 
-Codes: adsbdb / AirLabs / AeroAPI report IATA (IAH); hexdb.io reports ICAO.
+Codes: AirLabs / AeroAPI report IATA (IAH); hexdb.io reports ICAO.
 """
 
 import os
@@ -32,17 +30,15 @@ except ImportError:  # dotenv is a convenience; env vars work without it
     load_dotenv = None
 
 from jetset.config import AppConfig
-from jetset.fetcher import AdsbLolAdapter
+from jetset.fetcher import AirLabsAdapter
 from jetset.http import RequestsAPI
 
 MAX_CALLSIGNS = 5  # AeroAPI is ~$0.05/call — cap the cost per run
 AEROAPI_COST = 0.05
 TIMEOUT = 10
 AEROAPI_BASE = "https://aeroapi.flightaware.com/aeroapi"
-AIRLABS_BASE = "https://airlabs.co/api/v9"
 HEXDB_BASE = "https://hexdb.io/api/v1"
 MISSING = "—"
-NO_KEY = "no key"
 
 
 def our_route(flight) -> str:
@@ -76,29 +72,6 @@ def aeroapi_route(api: RequestsAPI, callsign: str) -> str:
         return f"error: {e}"
 
 
-def airlabs_route(api: RequestsAPI, callsign: str, key: str) -> str:
-    """Origin→dest (IATA) from AirLabs' real-time flights data, if available."""
-    try:
-        resp = api.get(
-            "/flights", params={"flight_icao": callsign, "api_key": key}, timeout=TIMEOUT
-        )
-        resp.raise_for_status()
-        body = resp.json()
-        if isinstance(body, dict) and body.get("error"):
-            return f"error: {body['error'].get('code', 'api error')}"
-        flights = body.get("response") or []
-        flight = flights[0] if isinstance(flights, list) and flights else None
-        if not isinstance(flight, dict):
-            return MISSING
-        dep = flight.get("dep_iata") or flight.get("dep_icao")
-        arr = flight.get("arr_iata") or flight.get("arr_icao")
-        if not dep and not arr:
-            return MISSING
-        return f"{dep or '?'}→{arr or '?'}"
-    except (requests.RequestException, ValueError) as e:
-        return f"error: {e}"
-
-
 def hexdb_route(api: RequestsAPI, callsign: str) -> str:
     """Origin→dest (ICAO) from hexdb.io's crowd-sourced route data."""
     try:
@@ -117,9 +90,9 @@ def hexdb_route(api: RequestsAPI, callsign: str) -> str:
 
 def agree(candidate: str, truth: str) -> str:
     """Score a candidate route against the ground-truth route."""
-    if truth in (MISSING, NO_KEY) or truth.startswith("error"):
+    if truth == MISSING or truth.startswith("error"):
         return "?"  # no ground truth to compare against
-    if candidate in (MISSING, NO_KEY) or candidate.startswith("error"):
+    if candidate == MISSING or candidate.startswith("error"):
         return "·"  # candidate offered no route
     return "✓" if candidate == truth else "✗"
 
@@ -147,17 +120,12 @@ def main() -> None:
         print("--truth needs AEROAPI_KEY (AeroAPI is ~$0.05/call).", file=sys.stderr)
         sys.exit(1)
 
-    airlabs_key = os.environ.get("AIRLABS_API_KEY")
-    if not airlabs_key:
-        print("(AIRLABS_API_KEY not set — AirLabs column will be blank)", file=sys.stderr)
-
     config = AppConfig.load(os.environ.get("JETSET_CONFIG"))
-    adapter = AdsbLolAdapter()
-    flights = adapter.nearby_flights(config.home_lat, config.home_lon, config.range)
+    flights = AirLabsAdapter().nearby_flights(config.home_lat, config.home_lon, config.range)
     flights = [f for f in flights if f.callsign][:MAX_CALLSIGNS]
 
     if not flights:
-        print("No nearby flights with routes right now — try again later.")
+        print("No nearby flights (check AIRLABS_API_KEY) — try again later.")
         return
 
     if use_truth:
@@ -169,7 +137,6 @@ def main() -> None:
             "pass --truth to add AeroAPI (~$0.05/callsign)\n"
         )
 
-    airlabs = RequestsAPI(base_url=AIRLABS_BASE)
     hexdb = RequestsAPI(base_url=HEXDB_BASE)
     aero = None
     if use_truth:
@@ -178,25 +145,19 @@ def main() -> None:
     rows = []
     for flight in flights:
         ours = our_route(flight)
-        air = airlabs_route(airlabs, flight.callsign, airlabs_key) if airlabs_key else NO_KEY
         hex_route = hexdb_route(hexdb, flight.callsign)
         if use_truth:
             truth = aeroapi_route(aero, flight.callsign)
-            rows.append(
-                (flight.callsign, ours, air, truth, hex_route,
-                 agree(ours, truth), agree(air, truth))
-            )
+            rows.append((flight.callsign, ours, truth, hex_route, agree(ours, truth)))
         else:
-            rows.append((flight.callsign, ours, air, hex_route))
+            rows.append((flight.callsign, ours, hex_route))
 
     if use_truth:
-        render_table(
-            rows, ("Callsign", "adsbdb", "AirLabs", "AeroAPI*", "hexdb.io", "ours✓", "AirLabs✓")
-        )
+        render_table(rows, ("Callsign", "ours (AirLabs)", "AeroAPI*", "hexdb.io", "ours✓"))
         print("\n* AeroAPI = ground truth.  ✓ correct  ✗ wrong  · no route  ? no truth")
     else:
-        render_table(rows, ("Callsign", "adsbdb", "AirLabs", "hexdb.io"))
-    print("Codes: adsbdb/AirLabs/AeroAPI = IATA; hexdb.io = ICAO.")
+        render_table(rows, ("Callsign", "ours (AirLabs)", "hexdb.io"))
+    print("Codes: AirLabs/AeroAPI = IATA; hexdb.io = ICAO.")
 
 
 if __name__ == "__main__":

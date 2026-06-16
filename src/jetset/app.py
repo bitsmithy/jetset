@@ -7,7 +7,7 @@ from RGBMatrixEmulator.emulation.canvas import Canvas
 from RGBMatrixEmulator.emulation.matrix import RGBMatrix
 
 from jetset.config import AppConfig
-from jetset.fetcher import AdsbLolAdapter, FlightAPI
+from jetset.fetcher import AirLabsAdapter, FlightAPI
 from jetset.models import Flight, FlightBuffer
 from jetset.renderer import render_flight_card, render_loading
 
@@ -17,6 +17,9 @@ logger = logging.getLogger(__name__)
 class App:
     # How often the background fetch thread wakes to check if a refresh is due.
     _FETCH_POLL_SECONDS = 1.0
+    # Display rotates a sliding window of this many flights; 4 metric pages each.
+    WINDOW_SIZE = 5
+    PAGES_PER_FLIGHT = 4
 
     class Frame(NamedTuple):
         flight: Flight
@@ -42,24 +45,15 @@ class App:
             return False
 
     def _fetch(self):
-        # Network calls happen OUTSIDE the lock; the lock is held only for the
-        # fast buffer mutations, so the render thread is never blocked on I/O.
+        # One AirLabs fetch captures all nearby flights (with routes + metrics);
+        # replace the buffer wholesale. The display then slides a window across
+        # them until the next refresh. Network happens outside the lock.
         flights = self.adapter.nearby_flights(
             self.config.home_lat, self.config.home_lon, self.config.range
         )
 
-        live_callsigns = {f.callsign for f in flights}
-
         with self._lock:
-            for f in flights:
-                self.buffer.push(f)
-            stale = [f for f in self.buffer.flights if f.callsign not in live_callsigns]
-
-        refreshed = [(f.callsign, self.adapter.refresh_flight(f)) for f in stale]
-
-        with self._lock:
-            for callsign, updated in refreshed:
-                self.buffer.replace(callsign, updated)
+            self.buffer.set_all(flights)
 
         self.last_fetch = time.time()
 
@@ -94,13 +88,24 @@ class App:
         with self._lock:
             flights = self.buffer.flights
 
-        if not flights:
+        n = len(flights)
+        if n == 0:
             return None
 
-        idx = self.frame // 4 % len(flights)
-        metric_page = self.frame % 4
+        window = min(self.WINDOW_SIZE, n)
+        # Slide the window across all captured flights once per refresh interval
+        # so fresh flights trickle into the rotation between (infrequent) fetches.
+        # The slide cadence scales with the catch size (refresh / N).
+        slide_interval = self.config.refresh / n
+        since = self.last_fetch if self.last_fetch is not None else time.time()
+        elapsed = time.time() - since
+        window_start = int(elapsed / slide_interval) % n if slide_interval else 0
 
-        return self.Frame(flights[idx], metric_page)
+        # Within the window, rotate one flight at a time through its metric pages.
+        flight_in_window = (self.frame // self.PAGES_PER_FLIGHT) % window
+        metric_page = self.frame % self.PAGES_PER_FLIGHT
+
+        return self.Frame(flights[(window_start + flight_in_window) % n], metric_page)
 
     def _after_render(self, matrix: RGBMatrix, canvas: Canvas) -> Canvas:
         # This needs to be it's own method so that tests don't need to run the infinite loop method.
@@ -143,6 +148,6 @@ class App:
 
 
 def _create_adapter(config: AppConfig):
-    if config.api_source == "adsblol":
-        return AdsbLolAdapter()
+    if config.api_source == "airlabs":
+        return AirLabsAdapter()
     raise ValueError(f"Unknown api_source: {config.api_source}")

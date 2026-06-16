@@ -92,6 +92,6 @@ class TestConfigFromYaml:
         assert config.hardware_gpio_slowdown == 2
         assert config.hardware_rgb_sequence == "RGB"
 
-    def test_api_source_defaults_to_adsblol(self) -> None:
+    def test_api_source_defaults_to_airlabs(self) -> None:
         config = AppConfig.load()
-        assert config.api_source == "adsblol"
+        assert config.api_source == "airlabs"

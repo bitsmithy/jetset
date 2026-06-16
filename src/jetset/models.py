@@ -1,9 +1,5 @@
 import logging
-from collections import deque
 from dataclasses import dataclass
-
-from jetset import geo
-from jetset.geo import Position
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +39,15 @@ class Flight:
 
 
 class FlightBuffer:
-    def __init__(self, maxlen=5):
-        self._flights: deque[Flight] = deque(maxlen=maxlen)
+    """Holds the flights captured by the most recent fetch.
+
+    A fetch captures all nearby flights at once and replaces the buffer
+    wholesale, so a plain list is all that's needed — no bounded deque,
+    incremental push, or dedup. The display slides a window across the flights.
+    """
+
+    def __init__(self) -> None:
+        self._flights: list[Flight] = []
 
     def __len__(self) -> int:
         return len(self._flights)
@@ -53,24 +56,14 @@ class FlightBuffer:
     def flights(self) -> list[Flight]:
         return list(self._flights)
 
-    def push(self, flight: Flight) -> None:
-        for existing in self._flights:
-            if existing.callsign == flight.callsign:
-                return
-
-        self._flights.append(flight)
-
-    def replace(self, callsign: str, flight: Flight) -> None:
-        for i, existing in enumerate(self._flights):
-            if existing.callsign == callsign:
-                self._flights[i] = flight
-                return
+    def set_all(self, flights) -> None:
+        """Replace the buffer with a fresh batch of flights."""
+        self._flights = list(flights)
 
 
 @dataclass(frozen=True)
 class Airport:
     iata_code: str
-    position: Position
 
 
 @dataclass(frozen=True)
@@ -84,55 +77,3 @@ class FlightRoute:
             self.origin.iata_code,
             self.destination.iata_code,
         )
-
-    @property
-    def bearing(self) -> float:
-        """Great-circle bearing from origin to destination (0–360°)."""
-        return geo.bearing(self.origin.position, self.destination.position)
-
-    @property
-    def distance(self) -> float:
-        """Great-circle distance from origin to destination in NM."""
-        return geo.distance(self.origin.position, self.destination.position)
-
-    def cross_track_distance(self, aircraft_position: Position) -> float:
-        """Perpendicular distance from aircraft to this route's great-circle path in NM."""
-        return geo.cross_track_distance(
-            self.origin.position, self.destination.position, aircraft_position
-        )
-
-    def plausible(self, aircraft_track: float, aircraft_position: Position, max_xtd: float) -> bool:
-        """Check if an aircraft is plausibly flying this route.
-
-        Two checks are applied:
-
-        1. **Bearing alignment** — the aircraft's track must be within 60°
-           of the great-circle bearing from origin to destination. This
-           rejects stale schedule data where the route doesn't match the
-           aircraft's heading.
-
-        2. **Cross-track distance** — the aircraft must be within
-           `max_xtd` nautical miles of the great-circle path. This
-           rejects routes that pass the bearing check but are
-           geographically far from the aircraft.
-
-        For example, a flight near Houston tracking 140° is likely
-        IAH→BOG (bearing ~138°), not LAX→ITO (bearing ~256°).
-
-        Args:
-            aircraft_track: The aircraft's current heading in degrees (0–360).
-            aircraft_position: The aircraft's current position.
-            max_xtd: Maximum allowable cross-track distance in nautical miles.
-                Typically the user's configured range.
-
-        Returns:
-            True if both checks pass, False otherwise.
-        """
-        diff = abs(aircraft_track - self.bearing)
-        if min(diff, 360 - diff) > 60:
-            return False
-
-        if self.cross_track_distance(aircraft_position) > max_xtd:
-            return False
-
-        return True

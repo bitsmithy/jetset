@@ -2,6 +2,13 @@
 
 from jetset.models import Flight
 
+_COMPASS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+
+
+def _cardinal(track: float) -> str:
+    """Nearest 8-point compass direction for a heading in degrees."""
+    return _COMPASS[int(track / 45 + 0.5) % 8]
+
 
 def loading_label(page: int = 0) -> str:
     if page == 1:
@@ -46,8 +53,7 @@ def metrics_label(flight: Flight, page: int = 0) -> str:
     """
     data = ""
     if page == 0 and flight.altitude:
-        formatted_altitude = f"{flight.altitude // 1000}K"
-        data += f"{formatted_altitude} ft"
+        data += f"{flight.altitude} ft"
     elif page == 1 and flight.speed:
         data += f"{flight.speed} kt"
     elif page == 2 and flight.vertical_rate is not None:
@@ -61,6 +67,6 @@ def metrics_label(flight: Flight, page: int = 0) -> str:
                 formatted_rate += "\u25bc"
             data += f"{formatted_rate} ft/m"
     elif page == 3 and flight.track is not None:
-        data += f"{int(flight.track)}\u00b0"
+        data += f"{int(flight.track)}\u00b0 {_cardinal(flight.track)}"
 
     return data

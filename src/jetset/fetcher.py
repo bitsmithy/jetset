@@ -1,202 +1,97 @@
 import logging
-import time
+import math
+import os
 from collections.abc import Sequence
-from dataclasses import dataclass, replace
-from typing import Any, Protocol
+from typing import Protocol
 
 import requests
 
 from jetset.http import RequestsAPI
-from jetset.models import Airport, Flight, FlightRoute, Position
+from jetset.models import Airport, Flight, FlightRoute
+
+ROUTE_TIMEOUT = 10  # seconds; AirLabs lookups must not hang the fetch
+NM_PER_DEGREE = 60.0
 
 logger = logging.getLogger(__name__)
-
-
-class RouteCache:
-    @dataclass(frozen=True)
-    class CacheEntry:
-        timestamp: float
-        route: FlightRoute
-
-    def __init__(self, ttl: int = 900) -> None:
-        self.cache: dict[str, self.CacheEntry] = {}
-        self.ttl = ttl
-
-    def get(self, callsign: str) -> FlightRoute | None:
-        entry = self.cache.get(callsign)
-
-        if entry:
-            now = time.time()
-            if now - entry.timestamp <= self.ttl:
-                return entry.route
-
-    def put(self, callsign: str, route: FlightRoute) -> None:
-        self.cache[callsign] = self.CacheEntry(time.time(), route)
-
-    def clear(self) -> None:
-        self.cache = {}
 
 
 class FlightAPI(Protocol):
     def nearby_flights(
         self, lat: float, lon: float, range: int, raw: bool = False
     ) -> Sequence[Flight]: ...
-    def refresh_flight(self, flight: Flight) -> Flight: ...
 
 
-class AdsbLolAdapter(FlightAPI):
+def _meters_to_feet(meters: float | None) -> int | None:
+    return round(meters * 3.28084) if meters is not None else None
+
+
+def _kmh_to_knots(kmh: float | None) -> int | None:
+    return round(kmh / 1.852) if kmh else None
+
+
+def _ms_to_ft_per_min(ms: float | None) -> int | None:
+    return round(ms * 196.850394) if ms is not None else None
+
+
+class AirLabsAdapter(FlightAPI):
+    """Single data source for the display.
+
+    One AirLabs ``/flights?bbox=`` call returns every nearby flight with its
+    metrics AND route, so it replaces the former adsb.lol + adsbdb + hexdb +
+    plausibility-filter stack (see README's "Data source history"). The
+    1000-requests/month free tier is honoured by the app's long refresh
+    interval — one bbox call per refresh.
+    """
+
     def __init__(self) -> None:
-        self._flight_api = RequestsAPI("https://api.adsb.lol/v2")
-        self._route_api = RequestsAPI("https://api.adsbdb.com/v0")
-        self._route_cache = RouteCache()
+        self._api = RequestsAPI("https://airlabs.co/api/v9")
+        self._api_key = os.environ.get("AIRLABS_API_KEY")
 
     @staticmethod
-    def _parse_airport(data: dict) -> Airport | None:
-        code = data.get("iata_code")
-        lat = data.get("latitude")
-        lon = data.get("longitude")
-
-        if code and lat is not None and lon is not None:
-            return Airport(code, Position(lat, lon))
-
-    def _fetch_route(self, callsign: str) -> FlightRoute | None:
-        try:
-            with self._route_api as api:
-                logger.debug("Fetching route for callsign %s", callsign)
-                data = api.get(f"/callsign/{callsign}").json()
-                if not data:
-                    return None
-
-                route_resp = data.get("response", {})
-                if not isinstance(route_resp, dict):
-                    return None
-
-                flight_route = route_resp.get("flightroute")
-                if not flight_route:
-                    return None
-
-                route = route_resp.get("flightroute", {})
-                origin = self._parse_airport(route.get("origin", {}))
-                destination = self._parse_airport(route.get("destination", {}))
-
-                if origin and destination:
-                    return FlightRoute(origin, destination)
-
-        except (requests.exceptions.RequestException, ValueError) as e:
-            logger.warning("Error fetching route for callsign %s: %s", callsign, e)
-
-    def _enrich_routes(self, flight_data: list[Any], max_flights: int = 5, max_xtd: float = 100):
-        enriched = []
-
-        for d in flight_data:
-            if len(enriched) >= max_flights:
-                break
-            callsign = d.get("flight", "").rstrip()
-            if not callsign:
-                continue
-
-            route = self._route_cache.get(callsign)
-            if route is None:
-                aircraft_track = d.get("track", 0)
-                aircraft_position = Position(d.get("lat", 0), d.get("lon", 0))
-                route = self._fetch_route(callsign)
-                if route:
-                    xtd = route.cross_track_distance(aircraft_position)
-                    diff = abs(aircraft_track - route.bearing)
-                    bearing_diff = min(diff, 360 - diff)
-                    plausible = bearing_diff <= 60 and xtd <= max_xtd
-                    logger.debug(
-                        "Route %s→%s: track=%s bearing=%s diff=%s° xtd=%s NM "
-                        "max_xtd=%s → %s",
-                        route.origin.iata_code, route.destination.iata_code,
-                        aircraft_track, route.bearing,
-                        round(bearing_diff, 1), round(xtd, 1), max_xtd,
-                        "ACCEPTED" if plausible else "REJECTED",
-                    )
-                    if plausible:
-                        self._route_cache.put(callsign, route)
-                    else:
-                        route = None
-
-            if route is not None:
-                enriched.append({**d, "route": route})
-
-        return enriched
+    def _bbox(lat: float, lon: float, range_nm: float) -> str:
+        """AirLabs bbox 'min_lat,min_lon,max_lat,max_lon' covering the range."""
+        half_lat = range_nm / NM_PER_DEGREE
+        half_lon = range_nm / (NM_PER_DEGREE * max(math.cos(math.radians(lat)), 0.1))
+        return f"{lat - half_lat},{lon - half_lon},{lat + half_lat},{lon + half_lon}"
 
     @staticmethod
-    def _is_airborne(aircraft: dict) -> bool:
-        alt = aircraft.get("alt_baro")
-        if alt is None or alt == "ground":
-            return False
-        return int(alt) > 0
-
-    @staticmethod
-    def json_to_flight(data: dict) -> Flight:
-        route = data.get("route")
-        callsign = data.get("flight", "").rstrip()
-        aircraft = data.get("t")
-        altitude = data.get("alt_baro")
-        speed = int(data.get("gs", 0)) if data.get("gs") else None
-        track = data.get("track")
-        vrate = data.get("baro_rate")
-
+    def to_flight(data: dict) -> Flight:
+        """Map an AirLabs flight (metric units) to a Flight (feet/knots/ft-min)."""
+        dep, arr = data.get("dep_iata"), data.get("arr_iata")
+        route = FlightRoute(Airport(dep), Airport(arr)) if dep and arr else None
         return Flight(
-            callsign=callsign,
+            callsign=(data.get("flight_icao") or "").strip(),
+            aircraft=data.get("aircraft_icao"),
             route=route,
-            aircraft=aircraft,
-            altitude=altitude,
-            speed=speed,
-            track=track,
-            vertical_rate=vrate,
+            altitude=_meters_to_feet(data.get("alt")),
+            speed=_kmh_to_knots(data.get("speed")),
+            track=data.get("dir"),
+            vertical_rate=_ms_to_ft_per_min(data.get("v_speed")),
         )
 
     def nearby_flights(
         self, lat: float, lon: float, range: int, raw: bool = False
     ) -> Sequence[Flight]:
-        flights = []
+        if not self._api_key:
+            logger.warning("AIRLABS_API_KEY not set; cannot fetch flights")
+            return []
         range_nm = range / 1.852  # km -> nautical miles
         try:
-            with self._flight_api as api:
-                logger.debug(
-                    "Fetching nearby flights at (%.4f, %.4f) within %d NM", lat, lon, range_nm
-                )
-                if data := api.get(f"/point/{lat}/{lon}/{range_nm}").json():
-                    airborne = [a for a in data["ac"] if self._is_airborne(a)]
-                    enriched = self._enrich_routes(airborne, max_flights=5, max_xtd=range_nm)
-
-                    if raw:
-                        return enriched
-                    elif enriched:
-                        return [self.json_to_flight(f) for f in enriched]
-
+            with self._api as api:
+                logger.debug("Fetching AirLabs flights near (%.4f, %.4f)", lat, lon)
+                body = api.get(
+                    "/flights",
+                    params={"bbox": self._bbox(lat, lon, range_nm), "api_key": self._api_key},
+                    timeout=ROUTE_TIMEOUT,
+                ).json()
+            if not isinstance(body, dict) or body.get("error"):
+                detail = body.get("error") if isinstance(body, dict) else body
+                logger.warning("AirLabs returned no usable data: %s", detail)
+                return []
+            raw_flights = [f for f in (body.get("response") or []) if f.get("flight_icao")]
+            if raw:
+                return raw_flights
+            return [self.to_flight(f) for f in raw_flights]
         except (requests.exceptions.RequestException, ValueError) as e:
-            logger.warning("Error fetching nearby flights: %s", e)
-
-        return flights
-
-    def refresh_flight(self, flight: Flight) -> Flight:
-        """Update a flight's metrics from adsb.lol, preserving its route.
-
-        The route is kept from the original Flight because it's static for a
-        given callsign — re-fetching it would waste API calls and risk the
-        plausibility check failing (the aircraft may have flown out of range
-        or be circling / landing).
-
-        If the API call fails or the aircraft is no longer airborne, the
-        original flight is returned unchanged so the display can show stale
-        data rather than nothing.
-        """
-        try:
-            with self._flight_api as api:
-                logger.debug(f"Fetching flight with callsign {flight.callsign}")
-                if data := api.get(f"/callsign/{flight.callsign}").json():
-                    aircraft_list = data.get("ac", [])
-                    if aircraft_list:
-                        updated = self.json_to_flight(aircraft_list[0])
-                        return replace(updated, route=flight.route)
-
-                return flight
-
-        except (requests.exceptions.RequestException, ValueError) as e:
-            logger.warning("Error fetching flight by callsign: %s", e)
-            return flight
+            logger.warning("Error fetching flights from AirLabs: %s", e)
+            return []

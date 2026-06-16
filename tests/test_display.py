@@ -1,6 +1,6 @@
 """Tests for display formatting functions."""
 
-from jetset.models import Airport, Flight, FlightRoute, Position
+from jetset.models import Airport, Flight, FlightRoute
 
 
 class TestLoadingLabel:
@@ -38,10 +38,7 @@ class TestRouteLabel:
 
         flight = Flight(
             callsign="UAL2337",
-            route=FlightRoute(
-                Airport("SFO", Position(37.62, -122.38)),
-                Airport("LAX", Position(33.94, -118.41)),
-            ),
+            route=FlightRoute(Airport("SFO"), Airport("LAX")),
         )
         assert route_label(flight) == "SFO→LAX"
 
@@ -57,7 +54,7 @@ class TestMetricsLabel:
         from jetset.display import metrics_label
 
         flight = Flight(callsign="UAL2337", altitude=35000, speed=450)
-        assert metrics_label(flight) == "35K ft"
+        assert metrics_label(flight) == "35000 ft"
 
     def test_metrics_label_empty_when_no_data(self) -> None:
         from jetset.display import metrics_label
@@ -70,7 +67,7 @@ class TestMetricsLabel:
 
         flight = Flight(callsign="UAL2337", altitude=35000, speed=450)
         label = metrics_label(flight, page=0)
-        assert label == "35K ft"
+        assert label == "35000 ft"
 
     def test_page_1_shows_speed(self) -> None:
         from jetset.display import metrics_label
@@ -105,14 +102,14 @@ class TestMetricsLabel:
 
         flight = Flight(callsign="UAL2337", track=270)
         label = metrics_label(flight, page=3)
-        assert label == "270°"
+        assert label == "270° W"
 
     def test_track_format_as_int(self) -> None:
         from jetset.display import metrics_label
 
         flight = Flight(callsign="UAL2337", track=280.12)
         label = metrics_label(flight, page=3)
-        assert label == "280°"
+        assert label == "280° W"
 
     def test_four_pages_rotates(self) -> None:
         from jetset.display import metrics_label
