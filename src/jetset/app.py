@@ -1,3 +1,4 @@
+import logging
 import time
 from typing import NamedTuple
 
@@ -8,6 +9,8 @@ from jetset.config import AppConfig
 from jetset.fetcher import AdsbLolAdapter, FlightAPI
 from jetset.models import Flight, FlightBuffer
 from jetset.renderer import render_flight_card, render_loading
+
+logger = logging.getLogger(__name__)
 
 
 class App:
@@ -45,6 +48,21 @@ class App:
 
         self.last_fetch = time.time()
 
+    def _safe_fetch(self) -> None:
+        """Run a fetch cycle, swallowing unexpected errors.
+
+        nearby_flights/refresh_flight already handle expected network and parse
+        errors; this is the last line of defense so an unforeseen failure logs
+        and the display keeps showing existing flights instead of crashing the
+        loop. last_fetch is advanced so a persistent failure backs off to the
+        normal refresh interval rather than retrying every frame.
+        """
+        try:
+            self._fetch()
+        except Exception:
+            logger.exception("Fetch cycle failed; keeping existing flights")
+            self.last_fetch = time.time()
+
     def _current_frame(self) -> Frame | None:
         if not self.buffer.flights:
             return None
@@ -79,7 +97,7 @@ class App:
         try:
             while True:
                 if self._should_fetch():
-                    self._fetch()
+                    self._safe_fetch()
 
                 if frame := self._current_frame():
                     canvas = self._render_frame(matrix, canvas, frame)

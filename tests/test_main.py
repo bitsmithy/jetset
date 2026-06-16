@@ -49,6 +49,21 @@ class TestAppFetch:
         assert app.last_fetch == 500
 
 
+class TestAppSafeFetch:
+    def test_swallows_fetch_errors_so_the_loop_survives(self) -> None:
+        from unittest.mock import patch
+
+        from jetset.app import App
+
+        app = App(AppConfig())
+        # An unexpected error in a fetch cycle must not propagate out of
+        # _safe_fetch — the display keeps running on existing flights.
+        with patch.object(app, "_fetch", side_effect=RuntimeError("boom")):
+            app._safe_fetch()
+
+        assert len(app.buffer) == 0
+
+
 class TestAppCurrentFrame:
     def test_selects_flight_and_metric_page(self) -> None:
         from jetset.app import App
