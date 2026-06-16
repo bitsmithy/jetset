@@ -27,11 +27,13 @@ def draw_text(canvas: Canvas, x: int, y: int, text: str, color: tuple[int, int, 
 def render_flight_card(canvas: Canvas, flight: Flight, metric_page=0):
     canvas.Clear()
 
-    # y-values are based off of the font height
-    draw_text(canvas, 1, FONT_HEIGHT * 1 + 0, flight_label(flight), ORANGE)
-    draw_text(canvas, 1, FONT_HEIGHT * 2 + 1, route_label(flight), CYAN)
-    draw_text(canvas, 1, FONT_HEIGHT * 3 + 2, aircraft_label(flight), GREEN)
-    draw_text(canvas, 1, FONT_HEIGHT * 4 + 3, metrics_label(flight, metric_page), BLUE)
+    # y-values are based off of the font height. The deployed panel suppresses
+    # other channels when red is present in a frame, so every row is red until
+    # a standard panel restores the full palette.
+    draw_text(canvas, 1, FONT_HEIGHT * 1 + 0, flight_label(flight), RED)
+    draw_text(canvas, 1, FONT_HEIGHT * 2 + 1, route_label(flight), RED)
+    draw_text(canvas, 1, FONT_HEIGHT * 3 + 2, aircraft_label(flight), RED)
+    draw_text(canvas, 1, FONT_HEIGHT * 4 + 3, metrics_label(flight, metric_page), RED)
 
 
 def render_loading(canvas: Canvas, page=0):

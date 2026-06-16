@@ -32,6 +32,23 @@ class TestRenderFlightCard:
 
         assert canvas.Clear.called
 
+    def test_all_rows_are_red(self) -> None:
+        # The deployed panel suppresses other channels when red is present, so
+        # every row is red (single working channel) until a standard panel.
+        from unittest.mock import MagicMock, patch
+
+        from jetset import renderer
+        from jetset.models import Flight
+
+        canvas = MagicMock()
+        flight = Flight(callsign="UAL2337", altitude=35000)
+
+        with patch("jetset.renderer.draw_text") as mock_draw:
+            renderer.render_flight_card(canvas, flight)
+
+        row_colors = [call.args[4] for call in mock_draw.call_args_list]
+        assert row_colors == [renderer.RED] * 4
+
     def test_renders_all_metric_pages_without_error(self) -> None:
         from RGBMatrixEmulator import RGBMatrix, RGBMatrixOptions
 
