@@ -1,4 +1,4 @@
-.PHONY: run debug test lint fixtures deploy setup-pi start debug-start
+.PHONY: run debug test lint fixtures deploy setup-pi run-pi debug-pi
 
 # Local dev
 run:   ## Run the emulator smoke test
@@ -26,11 +26,11 @@ deploy: ## rsync code to Pi
 		--exclude '*.pyc' --exclude 'wheels' \
 		. $(JETSET_USER)@$(JETSET_HOST):$(JETSET_PATH)/
 
-setup-pi: ## Setup Pi deps via SSH (clone, build, uv add)
-	cat scripts/setup-pi.sh | ssh $(JETSET_USER)@$(JETSET_HOST) "bash -s"
+setup-pi: ## Install deps and build rpi-rgb-led-matrix (run on the Pi)
+	bash scripts/setup-pi.sh
 
-start: ## Run on Pi via SSH (needs root for GPIO)
-	ssh -t $(JETSET_USER)@$(JETSET_HOST) "cd $(JETSET_PATH) && sudo -E env PATH=\\$PATH uv run python -m jetset"
+run-pi: ## Run the app on the Pi (needs root for GPIO)
+	sudo -E env PATH="$$PATH" uv run python -m jetset
 
-debug-start: ## Run on Pi via SSH with debug logging
-	ssh -t $(JETSET_USER)@$(JETSET_HOST) "cd $(JETSET_PATH) && sudo -E env PATH=\\$PATH JETSET_DEBUG=1 uv run python -m jetset"
+debug-pi: ## Run the app on the Pi with debug logging
+	sudo -E env PATH="$$PATH" JETSET_DEBUG=1 uv run python -m jetset
