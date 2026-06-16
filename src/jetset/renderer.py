@@ -1,6 +1,6 @@
-from RGBMatrixEmulator import graphics
 from RGBMatrixEmulator.emulation.canvas import Canvas
 
+from jetset.backend import graphics
 from jetset.display import aircraft_label, flight_label, loading_label, metrics_label, route_label
 from jetset.models import Flight
 
