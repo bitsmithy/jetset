@@ -135,6 +135,24 @@ class TestAppRenderFrame:
         mock_matrix.SwapOnVSync.assert_called_once_with(mock_canvas)
         assert app.frame == 4
 
+    def test_returns_swapped_canvas_for_next_frame(self) -> None:
+        from jetset.app import App
+
+        app = App(AppConfig())
+        mock_matrix = MagicMock()
+        mock_canvas = MagicMock()
+        frame = app.Frame(Flight(callsign="UAL2337"), 1)
+
+        with (
+            patch("jetset.app.render_flight_card"),
+            patch("jetset.app.time.sleep"),
+        ):
+            next_canvas = app._render_frame(mock_matrix, mock_canvas, frame)
+
+        # SwapOnVSync hands back the now-offscreen buffer; the next frame must
+        # be drawn into it, not into the canvas we just displayed.
+        assert next_canvas is mock_matrix.SwapOnVSync.return_value
+
 
 class TestAppLoading:
     def test_renders_loading_when_buffer_empty(self) -> None:
@@ -151,8 +169,9 @@ class TestAppLoading:
             patch("jetset.app.render_loading") as mock_render,
             patch("jetset.app.time.sleep"),
         ):
-            app._render_loading(mock_matrix, mock_canvas)
+            next_canvas = app._render_loading(mock_matrix, mock_canvas)
 
         mock_render.assert_called_once_with(mock_canvas, 0)
         mock_matrix.SwapOnVSync.assert_called_once_with(mock_canvas)
         assert app.frame == 1
+        assert next_canvas is mock_matrix.SwapOnVSync.return_value

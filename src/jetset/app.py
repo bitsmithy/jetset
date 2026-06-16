@@ -54,24 +54,27 @@ class App:
 
         return self.Frame(self.buffer.flights[idx], metric_page)
 
-    def _after_render(self, matrix: RGBMatrix, canvas: Canvas):
-        # This needs to be it's own method so that tests don't need to run the infinite loop method
-        matrix.SwapOnVSync(canvas)
+    def _after_render(self, matrix: RGBMatrix, canvas: Canvas) -> Canvas:
+        # This needs to be it's own method so that tests don't need to run the infinite loop method.
+        # SwapOnVSync returns the now-offscreen buffer to draw the *next* frame into; on real
+        # hardware this double-buffering is mandatory, or frames flash and tear over stale content.
+        next_canvas = matrix.SwapOnVSync(canvas)
         self.frame += 1
         time.sleep(self.config.pause)
+        return next_canvas
 
-    def _render_frame(self, matrix: RGBMatrix, canvas: Canvas, frame: Frame):
+    def _render_frame(self, matrix: RGBMatrix, canvas: Canvas, frame: Frame) -> Canvas:
         flight, metric_page = frame
         render_flight_card(canvas, flight, metric_page)
-        self._after_render(matrix, canvas)
+        return self._after_render(matrix, canvas)
 
-    def _render_loading(self, matrix: RGBMatrix, canvas: Canvas):
+    def _render_loading(self, matrix: RGBMatrix, canvas: Canvas) -> Canvas:
         render_loading(canvas, self.frame)
-        self._after_render(matrix, canvas)
+        return self._after_render(matrix, canvas)
 
     def loop(self, matrix: RGBMatrix, canvas: Canvas):
         # Show LOADING immediately while the first fetch runs
-        self._render_loading(matrix, canvas)
+        canvas = self._render_loading(matrix, canvas)
 
         try:
             while True:
@@ -79,9 +82,9 @@ class App:
                     self._fetch()
 
                 if frame := self._current_frame():
-                    self._render_frame(matrix, canvas, frame)
+                    canvas = self._render_frame(matrix, canvas, frame)
                 else:
-                    self._render_loading(matrix, canvas)
+                    canvas = self._render_loading(matrix, canvas)
         except KeyboardInterrupt:
             canvas.Clear()
             matrix.SwapOnVSync(canvas)
