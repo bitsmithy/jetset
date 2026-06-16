@@ -81,14 +81,34 @@ Hard-won lessons from bring-up:
   defaults (`multiplexing=0`, `row_address_type=0`). **Avoid OUTDOOR /
   multiplexed panels** — they use scrambled internal wiring that needs a custom
   multiplex-mapper compiled into rpi-rgb-led-matrix (see hzeller issue #1640).
-- **`rgb_sequence`** defaults to `"RGB"` (standard). Override per-panel (e.g.
-  `"RBG"`) only if red/green/blue come out swapped.
-- **The original test panel was defective** (a generic P2.5 64×32 "outdoor"
+- **`rgb_sequence`** currently defaults to `"RBG"` for the deployed (faulty)
+  panel; a standard panel uses `"RGB"`. Override per-panel if red/green/blue
+  come out swapped.
+- **The original test panel is defective** (a generic P2.5 64×32 "outdoor"
   1/16-scan unit): dead blue channel, underpowered green, and red-channel
   crosstalk that garbled any combination color at full brightness. Single red
-  and green rendered fine; it was replaced with a standard indoor panel.
+  and green rendered fine — which proves it's a *faulty unit*, not an
+  incompatibility (it addresses correctly and drives red perfectly). The app
+  currently renders every row red as a workaround; replace with a standard
+  indoor panel and restore the palette.
 - **Bring-up tooling:** `scripts/probe-*.py` and `scripts/*-sweep.sh` drive a
   panel directly via rgbmatrix to characterize geometry, scan/multiplexing,
   color channels, and signal stability — independent of the app. Start with
   `panel-colors.py` to confirm the three channels, then `probe-text.py` for the
   real 4-row layout.
+
+### Verifying a new panel
+
+When swapping in a replacement panel (reuse the same HAT + ribbon cable):
+
+1. `make deploy`
+2. **Channels:** `sudo -E env PATH=$PATH uv run python scripts/panel-colors.py`
+   - red→red, green→green, **blue→blue**. If a channel is swapped, set
+     `hardware.rgb_sequence`. If **blue is still dead** on a known-good panel
+     with this same HAT + cable, the fault is the **HAT or cable**, not panels.
+3. **Geometry + combination colors:** `... scripts/probe-text.py white 5`
+   - four stable rows, and white renders white (no collapse-to-red / garbling).
+4. **Restore the palette:** in `renderer.render_flight_card`, switch the four
+   rows back to `ORANGE` / `CYAN` / `GREEN` / `BLUE`, and set
+   `hardware_rgb_sequence` to `"RGB"` (or whatever step 2 found).
+5. **Live app:** `make start` — confirm flight cards render in full color.
