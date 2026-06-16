@@ -190,9 +190,9 @@ class AdsbLolAdapter(FlightAPI):
             with self._flight_api as api:
                 logger.debug(f"Fetching flight with callsign {flight.callsign}")
                 if data := api.get(f"/callsign/{flight.callsign}").json():
-                    aircraft = data.get("ac", [])[0]
-                    if aircraft:
-                        updated = self.json_to_flight(aircraft)
+                    aircraft_list = data.get("ac", [])
+                    if aircraft_list:
+                        updated = self.json_to_flight(aircraft_list[0])
                         return replace(updated, route=flight.route)
 
                 return flight
