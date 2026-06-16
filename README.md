@@ -36,5 +36,7 @@ physical LED panel and is ignored by the emulator:
 hardware:
   panel_type: ""        # empty = no chip-specific init; set "FM6126A" only if the panel comes up garbled
   gpio_slowdown: 5      # raise if the image is unstable/corrupts; lower if the display lags
-  rgb_sequence: RGB     # physical subpixel order; override (e.g. "RBG") if colors come out swapped
+  multiplexing: 0       # 0 for standard 1/16-scan panels; nonzero only for outdoor/multiplexed
+  row_address_type: 0   # 0 for standard panels; other values for some 1/16-scan panels (e.g. 3)
+  rgb_sequence: RBG     # physical subpixel order; "RGB" for a standard panel, "RBG" for the current one
 ```

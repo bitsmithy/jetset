@@ -19,9 +19,13 @@ class AppConfig:
     # Pi 3 A+ / Adafruit HAT needs slowdown 5 for a stable signal; 4 produced
     # intermittent corruption that looked like scrambled pixels.
     hardware_gpio_slowdown: int = 5
-    # Physical subpixel order. "RGB" is the standard default; override per-panel
-    # (e.g. "RBG") if red/green/blue come out swapped.
-    hardware_rgb_sequence: str = "RGB"
+    # Standard 1/16-scan panels use multiplexing 0 / row_address_type 0.
+    # Override only for "outdoor"/multiplexed panels.
+    hardware_multiplexing: int = 0
+    hardware_row_address_type: int = 0
+    # Physical subpixel order. The panel currently deployed needs "RBG"; a
+    # standard panel uses "RGB" (verify with scripts/panel-colors.py).
+    hardware_rgb_sequence: str = "RBG"
 
     @classmethod
     def load(cls, path=None):

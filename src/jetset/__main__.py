@@ -39,8 +39,8 @@ def main() -> None:
         # neither needs nor accepts them, so they stay behind IS_HARDWARE.
         options.hardware_mapping = "adafruit-hat"
         options.gpio_slowdown = config.hardware_gpio_slowdown
-        options.multiplexing = 0
-        options.row_address_type = 1
+        options.multiplexing = config.hardware_multiplexing
+        options.row_address_type = config.hardware_row_address_type
         options.panel_type = config.hardware_panel_type
         options.pwm_bits = 6  # lower PWM reduces flicker on Pi 3 A+
         options.led_rgb_sequence = config.hardware_rgb_sequence
