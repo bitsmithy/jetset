@@ -12,6 +12,16 @@ class AppConfig:
     pause: int = 2
     refresh: int = 60
     api_source: str = "adsblol"
+    # Physical LED panel tuning (ignored by the emulator). panel_type is empty
+    # by default — the P2.5 64x32 panel needs no chip-specific init sequence.
+    # Set it (e.g. "FM6126A") only if a panel comes up garbled without one.
+    hardware_panel_type: str = ""
+    # Pi 3 A+ / Adafruit HAT needs slowdown 5 for a stable signal; 4 produced
+    # intermittent corruption that looked like scrambled pixels.
+    hardware_gpio_slowdown: int = 5
+    # Physical subpixel order. "RGB" is the standard default; override per-panel
+    # (e.g. "RBG") if red/green/blue come out swapped.
+    hardware_rgb_sequence: str = "RGB"
 
     @classmethod
     def load(cls, path=None):
