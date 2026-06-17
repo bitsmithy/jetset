@@ -23,9 +23,9 @@ class AppConfig:
     # Override only for "outdoor"/multiplexed panels.
     hardware_multiplexing: int = 0
     hardware_row_address_type: int = 0
-    # Physical subpixel order. The panel currently deployed needs "RBG"; a
-    # standard panel uses "RGB" (verify with scripts/panel-colors.py).
-    hardware_rgb_sequence: str = "RBG"
+    # Physical subpixel order; "RGB" for a standard panel (verified with
+    # scripts/panel-colors.py — solid red/green/blue all render true).
+    hardware_rgb_sequence: str = "RGB"
 
     @classmethod
     def load(cls, path=None):
