@@ -54,6 +54,12 @@ def main() -> None:
         options.pwm_bits = 6  # lower PWM reduces flicker on Pi 3 A+
         options.led_rgb_sequence = config.hardware_rgb_sequence
         options.disable_hardware_pulsing = True
+        # Keep running as root after GPIO init. By default the library drops to
+        # the 'daemon' user, which can't traverse /home/pi (mode 700) — so the
+        # logos, loaded lazily in the render loop, would fail to read and the
+        # cards would show text but never a logo. (Fonts escape this because
+        # they load at import, before the matrix drops privileges.)
+        options.drop_privileges = False
 
     matrix = RGBMatrix(options=options)
     canvas = matrix.CreateFrameCanvas()

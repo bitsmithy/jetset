@@ -114,5 +114,39 @@ class TestRenderLogo:
             _scaled_logo.cache_clear()  # so the patched load_logo is used
             with patch.object(canvas, "SetPixel") as mock_setpixel:
                 render_logo(canvas, flight)
+        _scaled_logo.cache_clear()
 
         mock_setpixel.assert_called()
+
+    def test_dim_logo_pixels_meet_brightness_floor(self) -> None:
+        # MONOCHROME_RED maps luminance onto [LOGO_RED_FLOOR, 255] so dark
+        # airline colors stay visible on the low-PWM faulty panel.
+        from unittest.mock import patch
+
+        from PIL import Image
+        from RGBMatrixEmulator import RGBMatrix, RGBMatrixOptions
+
+        from jetset import renderer
+        from jetset.models import Flight
+        from jetset.renderer import LOGO_RED_FLOOR, _scaled_logo, render_logo
+
+        dark = Image.new("RGBA", (renderer.LOGO_WIDTH, renderer.LOGO_HEIGHT), (0, 0, 40, 255))
+
+        options = RGBMatrixOptions()
+        options.cols = 64
+        options.rows = 32
+        matrix = RGBMatrix(options=options)
+        canvas = matrix.CreateFrameCanvas()
+
+        reds: list[int] = []
+        flight = Flight(callsign="UAL2337")
+        with (
+            patch("jetset.renderer.MONOCHROME_RED", True),
+            patch("jetset.renderer.load_logo", return_value=dark),
+        ):
+            _scaled_logo.cache_clear()
+            with patch.object(canvas, "SetPixel", side_effect=lambda x, y, r, g, b: reds.append(r)):
+                render_logo(canvas, flight)
+            _scaled_logo.cache_clear()
+
+        assert reds and min(reds) >= LOGO_RED_FLOOR
