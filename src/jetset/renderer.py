@@ -34,8 +34,22 @@ font = graphics.Font()
 font.LoadFont("fonts/5x7.bdf")
 
 CANVAS_WIDTH = 64
-LOGO_WIDTH = 20
-LOGO_HEIGHT = 16
+# Logo box, top-right corner, over the top three text rows (row 4/metrics can
+# run full-width, so the box stops above it). A square logo scales to
+# LOGO_WIDTH x LOGO_HEIGHT; the margins keep it one pixel off the top and right
+# edges. With these values the logo spans cols 40-62, rows 1-23.
+LOGO_WIDTH = 23
+LOGO_HEIGHT = 23
+LOGO_RIGHT_MARGIN = 1  # empty columns kept to the right of the logo
+LOGO_TOP_MARGIN = 1  # empty rows kept above the logo
+# Faulty-panel visibility: map logo luminance onto [LOGO_RED_FLOOR, 255] so dark
+# airline colors don't fall below the panel's low-PWM threshold (pwm_bits=6),
+# while brighter pixels stay brighter (keeps the shape's detail). Set 0 to
+# render true luminance (or once MONOCHROME_RED is off, on a standard panel).
+LOGO_RED_FLOOR = 120
+# Debug aid: outline the logo box on the panel so its bounds can be eyeballed
+# against the card. Set False for normal use.
+LOGO_DEBUG_BORDER = False
 
 
 def draw_text(canvas: Canvas, x: int, y: int, text: str, color: tuple[int, int, int]) -> None:
@@ -60,19 +74,36 @@ def _scaled_logo(airline_code: str) -> Image.Image | None:
     return img.resize((new_w, new_h), Image.LANCZOS)
 
 
+def _draw_logo_border(canvas: Canvas) -> None:
+    """Outline the logo box (debug aid for checking its bounds on the panel)."""
+    left = CANVAS_WIDTH - LOGO_RIGHT_MARGIN - LOGO_WIDTH
+    right = left + LOGO_WIDTH - 1
+    top = LOGO_TOP_MARGIN
+    bottom = top + LOGO_HEIGHT - 1
+    for x in range(left, right + 1):
+        canvas.SetPixel(x, top, 255, 0, 0)
+        canvas.SetPixel(x, bottom, 255, 0, 0)
+    for y in range(top, bottom + 1):
+        canvas.SetPixel(left, y, 255, 0, 0)
+        canvas.SetPixel(right, y, 255, 0, 0)
+
+
 def render_logo(canvas: Canvas, flight: Flight) -> None:
     """Draw the airline logo, centred in the top-right corner.
 
     Honours MONOCHROME_RED (renders the logo as a red-luminance silhouette
     while the faulty panel can't do colour). Silently skips if no logo exists.
     """
+    if LOGO_DEBUG_BORDER:
+        _draw_logo_border(canvas)
+
     scaled = _scaled_logo(flight.airline)
     if scaled is None:
         return
 
     new_w, new_h = scaled.size
-    x_offset = CANVAS_WIDTH - LOGO_WIDTH + (LOGO_WIDTH - new_w) // 2
-    y_offset = (LOGO_HEIGHT - new_h) // 2
+    x_offset = CANVAS_WIDTH - LOGO_RIGHT_MARGIN - LOGO_WIDTH + (LOGO_WIDTH - new_w) // 2
+    y_offset = LOGO_TOP_MARGIN + (LOGO_HEIGHT - new_h) // 2
 
     for y in range(new_h):
         for x in range(new_w):
@@ -81,7 +112,8 @@ def render_logo(canvas: Canvas, flight: Flight) -> None:
                 continue
             if MONOCHROME_RED:
                 lum = round(0.299 * r + 0.587 * g + 0.114 * b)
-                canvas.SetPixel(x_offset + x, y_offset + y, lum, 0, 0)
+                red = LOGO_RED_FLOOR + round(lum * (255 - LOGO_RED_FLOOR) / 255)
+                canvas.SetPixel(x_offset + x, y_offset + y, red, 0, 0)
             else:
                 canvas.SetPixel(x_offset + x, y_offset + y, r, g, b)
 
