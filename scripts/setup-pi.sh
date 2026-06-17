@@ -17,8 +17,8 @@ else
     echo "=== Skipping swap (swapon not available) ==="
 fi
 
-# 2. Install system deps
-sudo apt update && sudo apt install -y python3-dev python3-pil cython3 build-essential cmake
+# 2. Install system deps (Cython and Pillow live in the venv, not here)
+sudo apt update && sudo apt install -y python3-dev build-essential cmake
 
 # 3. Install uv if missing
 if ! command -v uv &> /dev/null; then
@@ -30,19 +30,22 @@ else
     export PATH="$HOME/.local/bin:$PATH"
 fi
 
-# 4. Sync project deps and add scikit-build-core
+# 4. Sync project deps and add the rgbmatrix build backend (into the venv —
+# the wheel builds with --no-build-isolation, so Cython/scikit-build-core must
+# live in the venv, not just the system Python from apt).
 cd ~/jetset
 # Fix permissions if previous builds ran as root
 sudo chown -R $(whoami):$(whoami) .venv 2>/dev/null || true
 uv sync
-uv pip install scikit-build-core
+uv pip install scikit-build-core cython
 
 # 5. Clone, build, and add rgbmatrix to the project
 WHEEL_FILE=$(ls ~/jetset/wheels/rgbmatrix-*.whl 2>/dev/null | head -1)
 if [ ! -f "$WHEEL_FILE" ]; then
     echo "=== Building rpi-rgb-led-matrix ==="
-    [ -d "$HOME/rpi-rgb-led-matrix" ] || git clone https://github.com/hzeller/rpi-rgb-led-matrix.git
-    cd ~/rpi-rgb-led-matrix
+    [ -d "$HOME/rpi-rgb-led-matrix" ] || \
+        git clone https://github.com/hzeller/rpi-rgb-led-matrix.git "$HOME/rpi-rgb-led-matrix"
+    cd "$HOME/rpi-rgb-led-matrix"
     make -j4
     cd ~/jetset
 
@@ -65,4 +68,14 @@ else
     echo "=== rgbmatrix wheel already built ==="
 fi
 
-echo "=== Setup complete! Run \`make run-pi\` ==="
+# 6. Install + enable the systemd service (runs on boot)
+echo "=== Installing jetset systemd service ==="
+sed "s|@HOME@|$HOME|g" scripts/jetset.service.template \
+    | sudo tee /etc/systemd/system/jetset.service > /dev/null
+sudo systemctl daemon-reload
+sudo systemctl enable jetset
+sudo systemctl restart jetset
+
+echo "=== Setup complete! The jetset service is enabled and running. ==="
+echo "    Logs:  journalctl -u jetset -f"
+echo "    (foreground debug run: \`make debug-pi\` — stop the service first)"

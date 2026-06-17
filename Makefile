@@ -13,19 +13,23 @@ test:  ## Run all tests
 lint:  ## Lint and format check
 	uv run ruff check src/
 
-fixtures: ## Save live AeroAPI response as test fixture
+fixtures: ## Save a live AirLabs response as a test fixture
 	uv run python scripts/save_fixtures.py
 
 # Pi Deployment
-JETSET_USER ?= hao
+JETSET_USER ?= pi
 JETSET_HOST ?= jetset.local
 JETSET_PATH ?= /home/$(JETSET_USER)/jetset
 
-deploy: ## rsync code to Pi
+deploy: ## rsync to the Pi, run first-time setup if needed, restart the service
 	rsync -avz --exclude '.venv' --exclude '__pycache__' --exclude '.git' \
 		--exclude '*.pyc' --exclude 'wheels' \
 		--exclude '.pytest_cache' --exclude '.ruff_cache' \
 		. $(JETSET_USER)@$(JETSET_HOST):$(JETSET_PATH)/
+	ssh -t $(JETSET_USER)@$(JETSET_HOST) \
+		"cd $(JETSET_PATH) && \
+		 { [ -f /etc/systemd/system/jetset.service ] || bash scripts/setup-pi.sh; } && \
+		 sudo systemctl restart jetset"
 
 setup-pi: ## Install deps and build rpi-rgb-led-matrix (run on the Pi)
 	bash scripts/setup-pi.sh
