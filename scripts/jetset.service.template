@@ -1,0 +1,19 @@
+# Template — rendered to /etc/systemd/system/jetset.service by setup-pi.sh,
+# replacing @HOME@ with the deploying user's home dir. Runs as root for GPIO
+# (so %h can't be used — it would resolve to /root), hence the templating.
+[Unit]
+Description=Jetset FlightWall
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=@HOME@/jetset
+Environment=PATH=@HOME@/.local/bin:/usr/bin:/bin
+ExecStart=@HOME@/.local/bin/uv run python -m jetset
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
