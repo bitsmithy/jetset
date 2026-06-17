@@ -29,8 +29,9 @@ uv sync
 | `make fixtures` | Save a live AirLabs response as a test fixture |
 | `make deploy` | rsync the code to the Pi |
 | `make setup-pi` | Install deps + build rpi-rgb-led-matrix (run on the Pi) |
-| `make run-pi` | Run the app on the Pi (needs root for GPIO) |
-| `make debug-pi` | Run on the Pi with debug logging |
+| `make run-pi` | (Re)start the jetset service on the Pi |
+| `make logs-pi` | Tail the jetset service logs (`journalctl -u jetset -f`) |
+| `make debug-pi` | Stop the service and run in the foreground with debug logging |
 
 ## Configuration
 
