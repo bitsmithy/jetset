@@ -10,6 +10,13 @@ class TestLoadingLabel:
         assert loading_label() == "LOADING"
 
 
+class TestLogo:
+    def test_returns_none_for_missing_airline(self) -> None:
+        from jetset.display import load_logo
+
+        assert load_logo("NONEXIST") is None
+
+
 class TestFlightLabel:
     def test_returns_callsign(self) -> None:
         from jetset.display import flight_label

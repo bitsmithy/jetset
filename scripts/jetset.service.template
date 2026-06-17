@@ -11,6 +11,7 @@ Type=simple
 User=root
 WorkingDirectory=@HOME@/jetset
 Environment=PATH=@HOME@/.local/bin:/usr/bin:/bin
+Environment=JETSET_LOGO_DIR=@HOME@/.cache/jetset/logos
 ExecStart=@HOME@/.local/bin/uv run python -m jetset
 Restart=on-failure
 RestartSec=5
