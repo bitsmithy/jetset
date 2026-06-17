@@ -1,4 +1,4 @@
-"""Download airline logos from the sexym0nk3y/airline-logos repository.
+"""Download airline logos from the Jxck-S/airline-logos repository (RadarBox set).
 
 Logos are cached locally in ~/.cache/jetset/logos/ as {ICAO}.png files.
 """
@@ -9,8 +9,8 @@ import urllib.request
 
 from jetset.display import LOGO_DIR
 
-REPO_API = "https://api.github.com/repos/sexym0nk3y/airline-logos/contents/logos"
-RAW_BASE = "https://raw.githubusercontent.com/sexym0nk3y/airline-logos/main/logos"
+REPO_API = "https://api.github.com/repos/Jxck-S/airline-logos/contents/radarbox_logos"
+RAW_BASE = "https://raw.githubusercontent.com/Jxck-S/airline-logos/main/radarbox_logos"
 
 
 def _fetch_logo_list() -> list[str]:
@@ -24,8 +24,8 @@ def download_logos(icao_codes: list[str] | None = None) -> int:
     """Download airline logos to LOGO_DIR.
 
     Args:
-        icao_codes: Optional list of ICAO codes to download. If None, all
-            993 logos from the repo are downloaded.
+        icao_codes: Optional list of ICAO codes to download. If None, every
+            logo in the repo is downloaded.
 
     Returns:
         Number of logos downloaded.
