@@ -68,12 +68,13 @@ else
     echo "=== rgbmatrix wheel already built ==="
 fi
 
-# 6. Install + enable the systemd service (runs on boot)
+# 6. Download airline logos (cached in ~/.cache/jetset/logos; skips existing)
+echo "=== Downloading airline logos ==="
+uv run python scripts/download_logos.py || echo "(logo download incomplete — re-run later)"
+
+# 7. Install + enable the systemd service (runs on boot)
 echo "=== Installing jetset systemd service ==="
-sed "s|@HOME@|$HOME|g" scripts/jetset.service.template \
-    | sudo tee /etc/systemd/system/jetset.service > /dev/null
-sudo systemctl daemon-reload
-sudo systemctl enable jetset
+bash scripts/install-service.sh
 sudo systemctl restart jetset
 
 echo "=== Setup complete! The jetset service is enabled and running. ==="
