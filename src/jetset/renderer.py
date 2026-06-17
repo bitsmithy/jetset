@@ -24,10 +24,11 @@ WHITE = (255, 255, 255)
 DIM_WHITE = (80, 80, 80)
 BLACK = (0, 0, 0)
 
-# Faulty-panel workaround: render everything in red (the deployed panel
-# suppresses other channels when red is present). Set False once a standard
-# panel is installed to restore the full palette and full-colour logos.
-MONOCHROME_RED = True
+# Monochrome-red fallback for a panel that can't render full colour. Off — the
+# panel renders the full palette and colour logos. (The earlier "dead channels"
+# were the panel running on parasitic ribbon power, not a faulty panel; once it
+# was powered properly through its own VH4 header, all channels worked.)
+MONOCHROME_RED = False
 
 FONT_HEIGHT = 7
 font = graphics.Font()

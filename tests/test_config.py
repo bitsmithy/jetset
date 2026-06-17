@@ -46,9 +46,9 @@ class TestConfigDefaults:
         assert config.hardware_gpio_slowdown == 5
 
     def test_default_rgb_sequence(self) -> None:
-        # The panel currently deployed needs "RBG"; standard panels use "RGB".
+        # Standard panel: subpixels render true in RGB order.
         config = AppConfig.load()
-        assert config.hardware_rgb_sequence == "RBG"
+        assert config.hardware_rgb_sequence == "RGB"
 
     def test_default_multiplexing(self) -> None:
         config = AppConfig.load()

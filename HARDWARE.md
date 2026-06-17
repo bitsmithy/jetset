@@ -81,16 +81,17 @@ Hard-won lessons from bring-up:
   defaults (`multiplexing=0`, `row_address_type=0`). **Avoid OUTDOOR /
   multiplexed panels** — they use scrambled internal wiring that needs a custom
   multiplex-mapper compiled into rpi-rgb-led-matrix (see hzeller issue #1640).
-- **`rgb_sequence`** currently defaults to `"RBG"` for the deployed (faulty)
-  panel; a standard panel uses `"RGB"`. Override per-panel if red/green/blue
-  come out swapped.
-- **The original test panel is defective** (a generic P2.5 64×32 "outdoor"
-  1/16-scan unit): dead blue channel, underpowered green, and red-channel
-  crosstalk that garbled any combination color at full brightness. Single red
-  and green rendered fine — which proves it's a *faulty unit*, not an
-  incompatibility (it addresses correctly and drives red perfectly). The app
-  currently renders every row red as a workaround; replace with a standard
-  indoor panel and restore the palette.
+- **`rgb_sequence`** defaults to `"RGB"` (standard panel). Override per-panel
+  only if red/green/blue come out *swapped* — a swap is a subpixel-order issue;
+  a *missing* channel is power or wiring, not this.
+- **Power the panel through its OWN power header (VH4 / 4-pin), not the ribbon.**
+  The 16-pin HUB75 ribbon carries DATA + ground only — *not* the LEDs' 5V. Fed
+  only through the ribbon, the panel starves on parasitic ground current and the
+  symptom mimics a dead panel: red (lowest forward voltage) limps on, green
+  weak, blue dead, white collapses to red. We chased this as a "faulty panel"
+  across two panels + a new ribbon — it was always the VH4 power header not
+  being wired to 5V. Wire it and every channel works. Capacity isn't the issue
+  (the panel is ≤12W / 2.5A); a missing/starved power-header connection is.
 - **Bring-up tooling:** `scripts/panel-colors.py` (solid red/green/blue/white
   fills to confirm the three channels) and `scripts/probe-text.py` (the real
   4-row text layout) drive a panel directly via rgbmatrix, independent of the
@@ -102,14 +103,16 @@ Hard-won lessons from bring-up:
 
 When swapping in a replacement panel (reuse the same HAT + ribbon cable):
 
-1. `make deploy`
-2. **Channels:** `sudo -E env PATH=$PATH uv run python scripts/panel-colors.py`
-   - red→red, green→green, **blue→blue**. If a channel is swapped, set
-     `hardware.rgb_sequence`. If **blue is still dead** on a known-good panel
-     with this same HAT + cable, the fault is the **HAT or cable**, not panels.
-3. **Geometry + combination colors:** `... scripts/probe-text.py white 5`
+1. **Power:** wire the panel's own power header (VH4 / 4-pin) to 5V — the ribbon
+   does NOT carry LED power. A red-only / blue-dead / white→red panel is almost
+   always starved here, not faulty.
+2. `make deploy`
+3. **Channels:** `sudo -E env PATH=$PATH uv run python scripts/panel-colors.py 5`
+   - red→red, green→green, **blue→blue**, white→white. A *swapped* channel ⇒ set
+     `hardware.rgb_sequence`; a *dead/dim* channel ⇒ power (step 1) or the
+     HAT/cable, not subpixel order.
+4. **Geometry + combination colors:** `... scripts/probe-text.py white 5`
    - four stable rows, and white renders white (no collapse-to-red / garbling).
-4. **Restore the palette:** in `renderer.render_flight_card`, switch the four
-   rows back to `ORANGE` / `CYAN` / `GREEN` / `BLUE`, and set
-   `hardware_rgb_sequence` to `"RGB"` (or whatever step 2 found).
-5. **Live app:** `make run-pi` — confirm flight cards render in full color.
+5. **Restore full colour:** set `MONOCHROME_RED = False` in `renderer.py` and
+   `hardware_rgb_sequence = "RGB"` in `config.py` (or whatever step 3 found).
+6. **Live app:** `make run-pi` — confirm flight cards render in full colour.
