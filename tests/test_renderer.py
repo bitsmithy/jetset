@@ -70,3 +70,49 @@ class TestRenderFlightCard:
         for page in range(4):
             render_flight_card(canvas, flight, metric_page=page)
             canvas = matrix.SwapOnVSync(canvas)
+
+
+class TestRenderLogo:
+    def test_skips_missing_airline(self) -> None:
+        from unittest.mock import patch
+
+        from RGBMatrixEmulator import RGBMatrix, RGBMatrixOptions
+
+        from jetset.models import Flight
+        from jetset.renderer import _scaled_logo, render_logo
+
+        options = RGBMatrixOptions()
+        options.cols = 64
+        options.rows = 32
+        matrix = RGBMatrix(options=options)
+        canvas = matrix.CreateFrameCanvas()
+
+        flight = Flight(callsign="UAL2337")
+        with patch("jetset.renderer.load_logo", return_value=None):
+            _scaled_logo.cache_clear()  # so the patched load_logo is used
+            render_logo(canvas, flight)  # no crash
+
+    def test_draws_pixels_for_known_airline(self) -> None:
+        from unittest.mock import patch
+
+        from PIL import Image
+        from RGBMatrixEmulator import RGBMatrix, RGBMatrixOptions
+
+        from jetset.models import Flight
+        from jetset.renderer import LOGO_WIDTH, _scaled_logo, render_logo
+
+        test_logo = Image.new("RGB", (LOGO_WIDTH, 20), (255, 0, 0))
+
+        options = RGBMatrixOptions()
+        options.cols = 64
+        options.rows = 32
+        matrix = RGBMatrix(options=options)
+        canvas = matrix.CreateFrameCanvas()
+
+        flight = Flight(callsign="UAL2337", aircraft="B738")
+        with patch("jetset.renderer.load_logo", return_value=test_logo):
+            _scaled_logo.cache_clear()  # so the patched load_logo is used
+            with patch.object(canvas, "SetPixel") as mock_setpixel:
+                render_logo(canvas, flight)
+
+        mock_setpixel.assert_called()

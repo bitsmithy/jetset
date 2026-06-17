@@ -93,6 +93,7 @@ name = "jetset"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "pillow" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "requests" },
@@ -107,6 +108,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "pillow", specifier = ">=11" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "pyyaml", specifier = ">=6" },
     { name = "requests", specifier = ">=2.34.2" },
