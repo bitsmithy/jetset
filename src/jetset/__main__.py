@@ -22,6 +22,8 @@ def _configure_logging() -> None:
     # RGBMatrixEmulator has its own handler — stop propagation to avoid
     # duplicate INFO lines in the root logger.
     logging.getLogger("RGBME").propagate = False
+
+
 def main() -> None:
     _configure_logging()
 
@@ -35,17 +37,13 @@ def main() -> None:
 
     config = AppConfig.load(os.environ.get("JETSET_CONFIG"))
 
-    from jetset.backend import build_matrix
-
-    matrix = build_matrix()
-    canvas = matrix.CreateFrameCanvas()
     try:
         logger.info("Press Ctrl-C to stop")
         import time
 
         time.sleep(1)
         app = App(config)
-        app.loop(matrix, canvas)
+        app.loop()
     except KeyboardInterrupt:
         logger.info("Shutdown.")
 
