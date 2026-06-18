@@ -28,6 +28,8 @@ class TestFlightAPIProtocol:
 AIRLABS_FLIGHT = {
     "flight_icao": "UAL1170",
     "aircraft_icao": "B772",
+    "lat": 30.12,
+    "lng": -95.48,
     "alt": 5559,       # meters  -> ~18238 ft
     "speed": 621,      # km/h    -> ~335 kn
     "dir": 140.0,      # degrees
