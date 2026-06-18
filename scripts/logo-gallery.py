@@ -25,24 +25,14 @@ if "JETSET_LOGO_DIR" not in os.environ:
     base = Path(f"/home/{sudo_user}") if sudo_user else Path.home()
     os.environ["JETSET_LOGO_DIR"] = str(base / ".cache" / "jetset" / "logos")
 
-from jetset.backend import RGBMatrix, RGBMatrixOptions  # noqa: E402
+from jetset.backend import build_matrix  # noqa: E402
 from jetset.display import LOGO_DIR  # noqa: E402
 from jetset.renderer import ORANGE, draw_text, render_logo  # noqa: E402
 
 HOLD = float(sys.argv[1]) if len(sys.argv) > 1 else 3.0
 PREFIX = sys.argv[2].upper() if len(sys.argv) > 2 else ""
 
-options = RGBMatrixOptions()
-options.cols = 64
-options.rows = 32
-options.hardware_mapping = "adafruit-hat"
-options.gpio_slowdown = 5
-options.pwm_bits = 6
-options.led_rgb_sequence = "RGB"
-options.disable_hardware_pulsing = True
-options.drop_privileges = False  # stay root so logo files under /home stay readable
-
-matrix = RGBMatrix(options=options)
+matrix = build_matrix()
 canvas = matrix.CreateFrameCanvas()
 
 logos = sorted(p for p in LOGO_DIR.glob("*.png") if p.stem.upper().startswith(PREFIX))

@@ -24,12 +24,6 @@ WHITE = (255, 255, 255)
 DIM_WHITE = (80, 80, 80)
 BLACK = (0, 0, 0)
 
-# Monochrome-red fallback for a panel that can't render full colour. Off — the
-# panel renders the full palette and colour logos. (The earlier "dead channels"
-# were the panel running on parasitic ribbon power, not a faulty panel; once it
-# was powered properly through its own VH4 header, all channels worked.)
-MONOCHROME_RED = False
-
 FONT_HEIGHT = 7
 font = graphics.Font()
 font.LoadFont("fonts/5x7.bdf")
@@ -43,11 +37,6 @@ LOGO_WIDTH = 23
 LOGO_HEIGHT = 23
 LOGO_RIGHT_MARGIN = 1  # empty columns kept to the right of the logo
 LOGO_TOP_MARGIN = 1  # empty rows kept above the logo
-# Faulty-panel visibility: map logo luminance onto [LOGO_RED_FLOOR, 255] so dark
-# airline colors don't fall below the panel's low-PWM threshold (pwm_bits=6),
-# while brighter pixels stay brighter (keeps the shape's detail). Set 0 to
-# render true luminance (or once MONOCHROME_RED is off, on a standard panel).
-LOGO_RED_FLOOR = 120
 # Debug aid: outline the logo box on the panel so its bounds can be eyeballed
 # against the card. Set False for normal use.
 LOGO_DEBUG_BORDER = False
@@ -90,15 +79,11 @@ def _draw_logo_border(canvas: Canvas) -> None:
 
 
 def render_logo(canvas: Canvas, flight: Flight) -> None:
-    """Draw the airline logo, centred in the top-right corner.
-
-    Honours MONOCHROME_RED (renders the logo as a red-luminance silhouette
-    while the faulty panel can't do colour). Silently skips if no logo exists.
-    """
+    """Draw the airline logo in full colour, top-right. Skips if none exists."""
     if LOGO_DEBUG_BORDER:
         _draw_logo_border(canvas)
 
-    scaled = _scaled_logo(flight.airline)
+    scaled: Image.Image = _scaled_logo(flight.airline)
     if scaled is None:
         return
 
@@ -111,19 +96,13 @@ def render_logo(canvas: Canvas, flight: Flight) -> None:
             r, g, b, a = scaled.getpixel((x, y))
             if a == 0 or (r, g, b) == (0, 0, 0):
                 continue
-            if MONOCHROME_RED:
-                lum = round(0.299 * r + 0.587 * g + 0.114 * b)
-                red = LOGO_RED_FLOOR + round(lum * (255 - LOGO_RED_FLOOR) / 255)
-                canvas.SetPixel(x_offset + x, y_offset + y, red, 0, 0)
-            else:
-                canvas.SetPixel(x_offset + x, y_offset + y, r, g, b)
+            canvas.SetPixel(x_offset + x, y_offset + y, r, g, b)
 
 
 def render_flight_card(canvas: Canvas, flight: Flight, metric_page=0):
     canvas.Clear()
 
-    # y-values are based off of the font height. Colours come from the palette,
-    # but collapse to red while MONOCHROME_RED is set (faulty-panel workaround).
+    # y-values are based off of the font height; each row uses its palette colour.
     rows = (
         (flight_label(flight), ORANGE),
         (route_label(flight), CYAN),
@@ -131,7 +110,7 @@ def render_flight_card(canvas: Canvas, flight: Flight, metric_page=0):
         (metrics_label(flight, metric_page), BLUE),
     )
     for i, (text, color) in enumerate(rows):
-        draw_text(canvas, 1, FONT_HEIGHT * (i + 1) + i, text, RED if MONOCHROME_RED else color)
+        draw_text(canvas, 1, FONT_HEIGHT * (i + 1) + i, text, color)
 
     render_logo(canvas, flight)
 

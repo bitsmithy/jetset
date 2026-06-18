@@ -30,4 +30,35 @@ except ImportError as exc:
 
     IS_HARDWARE = False
 
-__all__ = ["RGBMatrix", "RGBMatrixOptions", "graphics", "IS_HARDWARE"]
+DISPLAY_WIDTH = 64
+DISPLAY_HEIGHT = 32
+
+
+def build_matrix() -> RGBMatrix:
+    """Create the 64x32 LED matrix with the project's standard options.
+
+    The single place panel setup lives, so the app and the scripts/ probes never
+    drift. On hardware it sets the Adafruit HAT mapping and keeps the process as
+    root (drop_privileges off) so the render loop can still read the logo cache
+    under /home — the library otherwise drops to 'daemon', which can't traverse
+    /home/pi. The emulator rejects hardware-only knobs, so they stay behind
+    IS_HARDWARE.
+    """
+    options = RGBMatrixOptions()
+    options.cols = DISPLAY_WIDTH
+    options.rows = DISPLAY_HEIGHT
+    if IS_HARDWARE:
+        options.hardware_mapping = "adafruit-hat"
+        options.drop_privileges = False
+    return RGBMatrix(options=options)
+
+
+__all__ = [
+    "RGBMatrix",
+    "RGBMatrixOptions",
+    "graphics",
+    "IS_HARDWARE",
+    "build_matrix",
+    "DISPLAY_WIDTH",
+    "DISPLAY_HEIGHT",
+]

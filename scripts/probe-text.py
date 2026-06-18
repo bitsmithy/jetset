@@ -1,22 +1,17 @@
 #!/usr/bin/env python3
-"""Final check: render the app's 4-row text card, held static, at a stable
-slowdown, in any color (including combination colors that exercise multiple
-channels at once).
+"""Render the app's 4-row text card, held static, in any colour — a quick check
+that text and combination colours render cleanly on the panel.
 
-Uses the project's own fonts/5x7.bdf and the app's exact row positions. Run it
-per color to confirm text renders reliably:
-  - red / green        : single working channels
-  - yellow / cyan / white / orange : combination colors (exercise the
-    channel-collapse we saw with white->red)
+Uses the project's own fonts/5x7.bdf and the app's exact row positions.
 
-Usage: probe-text.py [color] [gpio_slowdown] [hold-seconds]
-       color: red green blue yellow cyan magenta white orange  (default red 5 15)
+Usage: probe-text.py [color] [hold-seconds]
+       color: red green blue yellow cyan magenta white orange  (default red, 15s)
 """
 
 import sys
 import time
 
-from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
+from jetset.backend import build_matrix, graphics
 
 COLORS = {
     "red": (255, 0, 0),
@@ -32,20 +27,11 @@ COLORS = {
 }
 
 NAME = sys.argv[1] if len(sys.argv) > 1 else "red"
-SLOWDOWN = int(sys.argv[2]) if len(sys.argv) > 2 else 5
-HOLD = int(sys.argv[3]) if len(sys.argv) > 3 else 15
+HOLD = int(sys.argv[2]) if len(sys.argv) > 2 else 15
 R, G, B = COLORS.get(NAME, (255, 0, 0))
 FONT_HEIGHT = 7
 
-options = RGBMatrixOptions()
-options.cols = 64
-options.rows = 32
-options.hardware_mapping = "adafruit-hat"
-options.gpio_slowdown = SLOWDOWN
-options.led_rgb_sequence = "RBG"
-options.disable_hardware_pulsing = True
-
-matrix = RGBMatrix(options=options)
+matrix = build_matrix()
 canvas = matrix.CreateFrameCanvas()
 
 font = graphics.Font()
@@ -59,7 +45,7 @@ graphics.DrawText(canvas, font, 1, FONT_HEIGHT * 3 + 2, color, "B738")
 graphics.DrawText(canvas, font, 1, FONT_HEIGHT * 4 + 3, color, "35K ft")
 
 matrix.SwapOnVSync(canvas)
-print(f">>> color={NAME} slowdown={SLOWDOWN}: four rows held {HOLD}s")
+print(f">>> color={NAME}: four rows held {HOLD}s")
 print("    UAL123 / IAH-LAX / B738 / 35K ft — all four readable and stable?")
 time.sleep(HOLD)
 matrix.Clear()
