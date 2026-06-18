@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Run a scripts/ helper as root for GPIO on the Pi, with the jetset service
+# stopped for the duration (restarted on exit — even on Ctrl-C or error).
+#
+#   bin/script <name> [args...]       e.g.  bin/script logo-gallery 3 UAL
+#
+# <name> is the helper's filename without the .py extension.
+set -euo pipefail
+
+if [ $# -lt 1 ]; then
+    echo "usage: $(basename "$0") <name> [args...]   e.g. $(basename "$0") logo-gallery 3 UAL" >&2
+    exit 1
+fi
+
+# Run from the project root so fonts/ and uv resolve.
+cd "$(dirname "$0")/.."
+
+name="$1"
+shift
+target="scripts/${name}.py"
+if [ ! -f "$target" ]; then
+    echo "no such script: $target" >&2
+    exit 1
+fi
+
+sudo systemctl stop jetset
+trap 'sudo systemctl start jetset' EXIT
+sudo -E env PATH="$PATH" uv run python "$target" "$@"

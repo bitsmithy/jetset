@@ -79,7 +79,7 @@ uv run python scripts/download_logos.py || echo "(logo download incomplete — r
 
 # 7. Install + enable the systemd service (runs on boot)
 echo "=== Installing jetset systemd service ==="
-bash scripts/install-service.sh
+bash bin/install-service.sh
 sudo systemctl restart jetset
 
 echo "=== Setup complete! The jetset service is enabled and running. ==="

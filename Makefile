@@ -29,13 +29,13 @@ deploy: ## rsync to the Pi, run first-time setup if needed, restart the service
 		. $(JETSET_USER)@$(JETSET_HOST):$(JETSET_PATH)/
 	ssh -t $(JETSET_USER)@$(JETSET_HOST) \
 		"cd $(JETSET_PATH) && \
-		 { [ -f /etc/systemd/system/jetset.service ] || bash scripts/setup-pi.sh; } && \
+		 { [ -f /etc/systemd/system/jetset.service ] || bash bin/setup-pi.sh; } && \
 		 /home/$(JETSET_USER)/.local/bin/uv add ./wheels/rgbmatrix-*.whl && \
-		 bash scripts/install-service.sh && \
+		 bash bin/install-service.sh && \
 		 sudo systemctl restart jetset"
 
 setup-pi: ## Install deps and build rpi-rgb-led-matrix (run on the Pi)
-	bash scripts/setup-pi.sh
+	bash bin/setup-pi.sh
 
 run-pi: ## (Re)start the jetset service on the Pi
 	sudo systemctl restart jetset
