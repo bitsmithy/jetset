@@ -8,6 +8,9 @@ from jetset.models import Flight
 
 _COMPASS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
 
+# Vertical-rate markers: filled triangles for climb/descend, a bar for level.
+_CLIMB, _DESCEND, _LEVEL = "▲", "▼", "▬"
+
 
 def _cardinal(track: float) -> str:
     """Nearest 8-point compass direction for a heading in degrees."""
@@ -62,29 +65,28 @@ def metrics_label(flight: Flight, page: int = 0) -> str:
     """Format one metric page for the flight card.
 
     Pages:
-        0 = altitude (e.g. "35K ft")
-        1 = speed (e.g. "450 kt")
-        2 = vertical rate (e.g. "1500▲ ft/m" or "LVL")
-        3 = track (e.g. "270°")
+        0 = altitude (e.g. "35000ft")
+        1 = speed (e.g. "450kn")
+        2 = vertical rate (e.g. "▲1500ft/min", "▼1200ft/min", or "▬0ft/min")
+        3 = track (e.g. "270°W")
 
     Returns an empty string if the relevant field is missing.
     """
     data = ""
     if page == 0 and flight.altitude:
-        data += f"{flight.altitude} ft"
+        data += f"{flight.altitude}ft"
     elif page == 1 and flight.speed:
-        data += f"{flight.speed} kt"
+        data += f"{flight.speed}kn"
     elif page == 2 and flight.vertical_rate is not None:
-        if flight.vertical_rate == 0:
-            data += "LVL"
+        rate = flight.vertical_rate
+        if rate > 0:
+            marker = _CLIMB
+        elif rate < 0:
+            marker = _DESCEND
         else:
-            formatted_rate = str(abs(flight.vertical_rate))
-            if flight.vertical_rate > 0:
-                formatted_rate += "\u25b2"
-            elif flight.vertical_rate < 0:
-                formatted_rate += "\u25bc"
-            data += f"{formatted_rate} ft/m"
+            marker = _LEVEL
+        data += f"{marker}{abs(rate)}ft/min"
     elif page == 3 and flight.track is not None:
-        data += f"{int(flight.track)}\u00b0 {_cardinal(flight.track)}"
+        data += f"{int(flight.track)}\u00b0{_cardinal(flight.track)}"
 
     return data

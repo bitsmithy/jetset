@@ -29,7 +29,7 @@ AIRLABS_FLIGHT = {
     "flight_icao": "UAL1170",
     "aircraft_icao": "B772",
     "alt": 5559,       # meters  -> ~18238 ft
-    "speed": 621,      # km/h    -> ~335 kt
+    "speed": 621,      # km/h    -> ~335 kn
     "dir": 140.0,      # degrees
     "v_speed": 0,      # m/s     -> 0 ft/min
     "dep_iata": "SFO",
