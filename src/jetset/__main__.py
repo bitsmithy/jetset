@@ -7,9 +7,6 @@ import os
 from jetset.app import App
 from jetset.config import AppConfig
 
-DISPLAY_WIDTH = 64
-DISPLAY_HEIGHT = 32
-
 logger = logging.getLogger(__name__)
 
 
@@ -38,30 +35,9 @@ def main() -> None:
 
     config = AppConfig.load(os.environ.get("JETSET_CONFIG"))
 
-    from jetset.backend import IS_HARDWARE, RGBMatrix, RGBMatrixOptions
+    from jetset.backend import build_matrix
 
-    options = RGBMatrixOptions()
-    options.cols = DISPLAY_WIDTH
-    options.rows = DISPLAY_HEIGHT
-    if IS_HARDWARE:
-        # Physical-panel tuning. These are hardware-only knobs; the emulator
-        # neither needs nor accepts them, so they stay behind IS_HARDWARE.
-        options.hardware_mapping = "adafruit-hat"
-        options.gpio_slowdown = config.hardware_gpio_slowdown
-        options.multiplexing = config.hardware_multiplexing
-        options.row_address_type = config.hardware_row_address_type
-        options.panel_type = config.hardware_panel_type
-        options.pwm_bits = 6  # lower PWM reduces flicker on Pi 3 A+
-        options.led_rgb_sequence = config.hardware_rgb_sequence
-        options.disable_hardware_pulsing = True
-        # Keep running as root after GPIO init. By default the library drops to
-        # the 'daemon' user, which can't traverse /home/pi (mode 700) — so the
-        # logos, loaded lazily in the render loop, would fail to read and the
-        # cards would show text but never a logo. (Fonts escape this because
-        # they load at import, before the matrix drops privileges.)
-        options.drop_privileges = False
-
-    matrix = RGBMatrix(options=options)
+    matrix = build_matrix()
     canvas = matrix.CreateFrameCanvas()
     try:
         logger.info("Press Ctrl-C to stop")

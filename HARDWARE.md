@@ -73,17 +73,16 @@
 
 Hard-won lessons from bring-up:
 
-- **`gpio_slowdown = 5` is required** on the Pi 3 A+ / Adafruit HAT. At `4` the
-  signal is unstable: a static image renders correctly for a moment, then
-  corrupts into scrambled pixels (it masquerades as a "bad pixel mapping").
-  `5` holds steady. Configurable via `hardware.gpio_slowdown`.
-- **Use INDOOR, standard 1/16-scan panels.** They map 1:1 and work with the
-  defaults (`multiplexing=0`, `row_address_type=0`). **Avoid OUTDOOR /
-  multiplexed panels** — they use scrambled internal wiring that needs a custom
-  multiplex-mapper compiled into rpi-rgb-led-matrix (see hzeller issue #1640).
-- **`rgb_sequence`** defaults to `"RGB"` (standard panel). Override per-panel
-  only if red/green/blue come out *swapped* — a swap is a subpixel-order issue;
-  a *missing* channel is power or wiring, not this.
+- **A healthy, properly-powered panel needs no tuning.** The app sets only the
+  `adafruit-hat` mapping and runs on rpi-rgb-led-matrix defaults (gpio_slowdown,
+  multiplexing, row_address_type, rgb_sequence, pwm_bits). Early bring-up *seemed*
+  to need gpio_slowdown 5 and an RBG sequence, but that was the power-starvation
+  artefact below — once the panel was powered through its own header, defaults
+  rendered cleanly. If a future panel ever misbehaves, those knobs live in
+  rpi-rgb-led-matrix; re-add the ones you need in `src/jetset/__main__.py`.
+- **Use INDOOR, standard 1/16-scan panels.** They map 1:1 on the defaults.
+  **Avoid OUTDOOR / multiplexed panels** — their scrambled internal wiring needs
+  a custom multiplex-mapper compiled into rpi-rgb-led-matrix (hzeller #1640).
 - **Power the panel through its OWN power header (VH4 / 4-pin), not the ribbon.**
   The 16-pin HUB75 ribbon carries DATA + ground only — *not* the LEDs' 5V. Fed
   only through the ribbon, the panel starves on parasitic ground current and the
@@ -107,12 +106,10 @@ When swapping in a replacement panel (reuse the same HAT + ribbon cable):
    does NOT carry LED power. A red-only / blue-dead / white→red panel is almost
    always starved here, not faulty.
 2. `make deploy`
-3. **Channels:** `sudo -E env PATH=$PATH uv run python scripts/panel-colors.py 5`
-   - red→red, green→green, **blue→blue**, white→white. A *swapped* channel ⇒ set
-     `hardware.rgb_sequence`; a *dead/dim* channel ⇒ power (step 1) or the
-     HAT/cable, not subpixel order.
-4. **Geometry + combination colors:** `... scripts/probe-text.py white 5`
+3. **Channels:** `sudo -E env PATH=$PATH uv run python scripts/panel-colors.py`
+   - red→red, green→green, **blue→blue**, white→white. A *dead/dim* channel ⇒
+     power (step 1) or the HAT/cable. A *swapped* channel ⇒ the panel's subpixel
+     order differs; re-add `led_rgb_sequence` in `backend.build_matrix` to fix it.
+4. **Geometry + combination colors:** `... scripts/probe-text.py white`
    - four stable rows, and white renders white (no collapse-to-red / garbling).
-5. **Restore full colour:** set `MONOCHROME_RED = False` in `renderer.py` and
-   `hardware_rgb_sequence = "RGB"` in `config.py` (or whatever step 3 found).
-6. **Live app:** `make run-pi` — confirm flight cards render in full colour.
+5. **Live app:** `make run-pi` — confirm flight cards render in full colour.

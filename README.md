@@ -36,17 +36,9 @@ uv sync
 ## Configuration
 
 Settings load from a YAML file pointed to by the `JETSET_CONFIG` environment
-variable (defaults built in when unset). The `hardware` section tunes the
-physical LED panel and is ignored by the emulator:
-
-```yaml
-hardware:
-  panel_type: ""        # empty = no chip-specific init; set "FM6126A" only if the panel comes up garbled
-  gpio_slowdown: 5      # raise if the image is unstable/corrupts; lower if the display lags
-  multiplexing: 0       # 0 for standard 1/16-scan panels; nonzero only for outdoor/multiplexed
-  row_address_type: 0   # 0 for standard panels; other values for some 1/16-scan panels (e.g. 3)
-  rgb_sequence: RBG     # physical subpixel order; "RGB" for a standard panel, "RBG" for the current one
-```
+variable (defaults built in when unset) — `home` coordinates, `range`, `pause`,
+and `refresh`. The panel needs no tuning beyond the Adafruit HAT mapping, which
+the app sets automatically on hardware.
 
 Flights come from a single source, **AirLabs** (`api_source: airlabs`): one
 `/flights?bbox=` call returns every nearby flight with positions, metrics, and
