@@ -63,7 +63,7 @@ class TestMetricsLabel:
         from jetset.display import metrics_label
 
         flight = Flight(callsign="UAL2337", altitude=35000, speed=450)
-        assert metrics_label(flight) == "35000 ft"
+        assert metrics_label(flight) == "35000ft"
 
     def test_metrics_label_empty_when_no_data(self) -> None:
         from jetset.display import metrics_label
@@ -76,49 +76,49 @@ class TestMetricsLabel:
 
         flight = Flight(callsign="UAL2337", altitude=35000, speed=450)
         label = metrics_label(flight, page=0)
-        assert label == "35000 ft"
+        assert label == "35000ft"
 
     def test_page_1_shows_speed(self) -> None:
         from jetset.display import metrics_label
 
         flight = Flight(callsign="UAL2337", altitude=35000, speed=450)
         label = metrics_label(flight, page=1)
-        assert label == "450 kt"
+        assert label == "450kn"
 
     def test_page_2_shows_vertical_rate(self) -> None:
         from jetset.display import metrics_label
 
         flight = Flight(callsign="UAL2337", vertical_rate=1500)
         label = metrics_label(flight, page=2)
-        assert label == "1500▲ ft/m"
+        assert label == "▲1500ft/min"
 
     def test_page_2_descending_shows_down_arrow(self) -> None:
         from jetset.display import metrics_label
 
         flight = Flight(callsign="SWA450", vertical_rate=-1200)
         label = metrics_label(flight, page=2)
-        assert label == "1200▼ ft/m"
+        assert label == "▼1200ft/min"
 
     def test_page_2_level_flight(self) -> None:
         from jetset.display import metrics_label
 
         flight = Flight(callsign="UAL2337", vertical_rate=0)
         label = metrics_label(flight, page=2)
-        assert label == "LVL"
+        assert label == "▬0ft/min"
 
     def test_page_3_shows_track(self) -> None:
         from jetset.display import metrics_label
 
         flight = Flight(callsign="UAL2337", track=270)
         label = metrics_label(flight, page=3)
-        assert label == "270° W"
+        assert label == "270°W"
 
     def test_track_format_as_int(self) -> None:
         from jetset.display import metrics_label
 
         flight = Flight(callsign="UAL2337", track=280.12)
         label = metrics_label(flight, page=3)
-        assert label == "280° W"
+        assert label == "280°W"
 
     def test_four_pages_rotates(self) -> None:
         from jetset.display import metrics_label
