@@ -93,16 +93,14 @@ class App:
             return None
 
         window = min(self.WINDOW_SIZE, n)
-        # Slide the window across all captured flights once per refresh interval
-        # so fresh flights trickle into the rotation between (infrequent) fetches.
-        # The slide cadence scales with the catch size (refresh / N).
-        slide_interval = self.config.refresh / n
-        since = self.last_fetch if self.last_fetch is not None else time.time()
-        elapsed = time.time() - since
-        window_start = int(elapsed / slide_interval) % n if slide_interval else 0
-
-        # Within the window, rotate one flight at a time through its metric pages.
-        flight_in_window = (self.frame // self.PAGES_PER_FLIGHT) % window
+        # Show a sliding window of flights, one at a time. Each flight gets
+        # all PAGES_PER_FLIGHT metric pages before advancing to the next.
+        # After every flight in the current window has been shown, slide the
+        # window by 1 so fresh flights trickle in.
+        frames_per_cycle = self.PAGES_PER_FLIGHT * window
+        cycle = self.frame // frames_per_cycle
+        window_start = cycle % max(1, n - window + 1) if n else 0
+        flight_in_window = (self.frame % frames_per_cycle) // self.PAGES_PER_FLIGHT
         metric_page = self.frame % self.PAGES_PER_FLIGHT
 
         return self.Frame(flights[(window_start + flight_in_window) % n], metric_page)

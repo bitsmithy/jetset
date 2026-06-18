@@ -107,27 +107,29 @@ class TestAppCurrentFrame:
             ("SWA45", 0), ("SWA45", 1), ("SWA45", 2), ("SWA45", 3),
         ]
 
-    def test_window_slides_over_the_refresh_interval(self) -> None:
+    def test_window_slides_by_one_each_cycle(self) -> None:
         from jetset.app import App
 
-        app = App(AppConfig())  # refresh = 2700s
+        app = App(AppConfig())
         app.buffer.set_all([Flight(callsign=str(i)) for i in range(10)])
         app.last_fetch = 0.0
-        app.frame = 0
 
-        # slide_interval = 2700 / 10 = 270s; one slide advances window_start by 1.
-        with patch("jetset.app.time.time", return_value=0.0):
-            frame = app._current_frame()
-            assert frame is not None
-            assert frame.flight.callsign == "0"
-        with patch("jetset.app.time.time", return_value=270.0):
-            frame = app._current_frame()
-            assert frame is not None
-            assert frame.flight.callsign == "1"
-        with patch("jetset.app.time.time", return_value=540.0):
-            frame = app._current_frame()
-            assert frame is not None
-            assert frame.flight.callsign == "2"
+        # Each cycle = PAGES_PER_FLIGHT * WINDOW_SIZE = 4 * 5 = 20 frames.
+        # After one cycle the window slides by 1.
+        app.frame = 0
+        frame = app._current_frame()
+        assert frame is not None
+        assert frame.flight.callsign == "0"
+
+        app.frame = 20
+        frame = app._current_frame()
+        assert frame is not None
+        assert frame.flight.callsign == "1"
+
+        app.frame = 40
+        frame = app._current_frame()
+        assert frame is not None
+        assert frame.flight.callsign == "2"
 
     def test_empty_buffer_returns_none(self) -> None:
         from jetset.app import App
