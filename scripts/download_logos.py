@@ -10,6 +10,9 @@ import os
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import cast
+
+from PIL import Image
 
 from jetset.config import AppConfig
 
@@ -39,12 +42,33 @@ def _fetch_logo_list(api_url: str) -> list[str]:
     return [e["name"] for e in entries if e["name"].endswith(".png")]
 
 
+def _is_blank_silhouette(path: Path) -> bool:
+    """True if every opaque pixel is pure black — a silhouette the colour
+    renderer skips entirely (it drops black pixels), so it shows as nothing.
+
+    RadarBox ships a few such placeholders (e.g. ASA); treating them as gaps
+    lets a later source (FlightAware) supply a real colour logo instead.
+    """
+    try:
+        with Image.open(path) as img:
+            rgba = img.convert("RGBA")
+    except OSError:
+        return False
+    # PIL types pixels loosely; in RGBA mode each is an (r, g, b, a) tuple.
+    pixels = cast("list[tuple[int, int, int, int]]", list(rgba.get_flattened_data()))
+    return all(pixel[:3] == (0, 0, 0) for pixel in pixels if pixel[3] != 0)
+
+
 def _download_missing(filenames: list[str], raw_base: str, dest_dir: Path) -> int:
-    """Download each filename from raw_base into dest_dir, skipping existing."""
+    """Download each filename from raw_base into dest_dir.
+
+    A file already present is kept — unless it's a blank silhouette, which this
+    source is given the chance to replace with a usable colour logo.
+    """
     count = 0
     for name in filenames:
         dest = dest_dir / name
-        if dest.exists():
+        if dest.exists() and not _is_blank_silhouette(dest):
             continue
         try:
             urllib.request.urlretrieve(f"{raw_base}/{name}", dest)
