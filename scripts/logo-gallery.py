@@ -21,7 +21,7 @@ from pathlib import Path
 from jetset.backend import build_matrix
 from jetset.config import AppConfig
 from jetset.models import Flight
-from jetset.renderer import ORANGE, draw_text, render_logo
+from jetset.renderer import Renderer
 
 HOLD = float(sys.argv[1]) if len(sys.argv) > 1 else 3.0
 PREFIX = sys.argv[2].upper() if len(sys.argv) > 2 else ""
@@ -31,23 +31,19 @@ logos = sorted(p for p in logo_dir.glob("*.png") if p.stem.upper().startswith(PR
 if not logos:
     raise SystemExit(f"No logos matching '{PREFIX}*' in {logo_dir}")
 
-matrix = build_matrix()
-canvas = matrix.CreateFrameCanvas()
-
+renderer = Renderer(build_matrix(), logo_dir)
 print(f"{len(logos)} logos in {logo_dir} — {HOLD}s each (Ctrl-C to stop)")
 
 try:
     for path in logos:
-        code = path.stem
-        flight = Flight(callsign=code)
-        canvas.Clear()
-        draw_text(canvas, 1, 7, code, ORANGE)  # ICAO where the callsign goes
-        render_logo(canvas, flight, logo_dir)  # logo where it goes
-        canvas = matrix.SwapOnVSync(canvas)
-        print(f">>> {code}")
+        # A bare Flight shows just the code (callsign row) + the logo; the other
+        # rows render empty since route/aircraft/metrics are absent.
+        renderer.flight_card(Flight(callsign=path.stem))
+        renderer.present()
+        print(f">>> {path.stem}")
         time.sleep(HOLD)
 except KeyboardInterrupt:
     pass
 finally:
-    matrix.Clear()
+    renderer.clear()
     print("done")

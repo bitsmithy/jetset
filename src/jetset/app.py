@@ -4,13 +4,11 @@ import time
 from pathlib import Path
 from typing import NamedTuple
 
-from RGBMatrixEmulator.emulation.canvas import Canvas
-from RGBMatrixEmulator.emulation.matrix import RGBMatrix
-
+from jetset.backend import build_matrix
 from jetset.config import AppConfig
 from jetset.fetcher import AirLabsAdapter, FlightAPI
 from jetset.models import Flight, FlightBuffer
-from jetset.renderer import render_flight_card, render_loading
+from jetset.renderer import Renderer
 
 logger = logging.getLogger(__name__)
 
@@ -109,46 +107,30 @@ class App:
 
         return self.Frame(flights[(window_start + flight_in_window) % n], metric_page)
 
-    def _after_render(self, matrix: RGBMatrix, canvas: Canvas) -> Canvas:
-        # This needs to be it's own method so that tests don't need to run the infinite loop method.
-        # SwapOnVSync returns the now-offscreen buffer to draw the *next* frame into; on real
-        # hardware this double-buffering is mandatory, or frames flash and tear over stale content.
-        next_canvas = matrix.SwapOnVSync(canvas)
-        self.frame += 1
-        time.sleep(self.config.pause)
-        return next_canvas
+    def loop(self) -> None:
+        matrix = build_matrix()
 
-    def _render_frame(self, matrix: RGBMatrix, canvas: Canvas, frame: Frame) -> Canvas:
-        flight, metric_page = frame
-        render_flight_card(canvas, flight, self.logo_dir, metric_page)
-        return self._after_render(matrix, canvas)
-
-    def _render_loading(self, matrix: RGBMatrix, canvas: Canvas) -> Canvas:
-        # % 4 so the "LOADING." dots keep cycling instead of freezing on
-        # "LOADING" once the frame counter passes 3.
-        render_loading(canvas, self.frame % self.PAGES_PER_FLIGHT)
-        return self._after_render(matrix, canvas)
-
-    def loop(self, matrix: RGBMatrix, canvas: Canvas):
         # Fetching runs on a background thread; this loop only renders, so the
-        # display keeps cycling smoothly while a fetch is in flight.
-        canvas = self._render_loading(matrix, canvas)
+        # display keeps cycling smoothly while a fetch is in flight. The Renderer
+        # owns the double-buffered canvas; present() does the VSync swap.
+        renderer = Renderer(matrix, self.logo_dir)
 
-        fetch_thread = threading.Thread(
-            target=self._fetch_loop, name="jetset-fetch", daemon=True
-        )
+        fetch_thread = threading.Thread(target=self._fetch_loop, name="jetset-fetch", daemon=True)
         fetch_thread.start()
 
         try:
             while True:
                 if frame := self._current_frame():
-                    canvas = self._render_frame(matrix, canvas, frame)
+                    renderer.flight_card(frame.flight, frame.metric_page)
                 else:
-                    canvas = self._render_loading(matrix, canvas)
+                    # % 4 so the "LOADING." dots keep cycling instead of freezing.
+                    renderer.loading(self.frame % self.PAGES_PER_FLIGHT)
+                renderer.present()
+                self.frame += 1
+                time.sleep(self.config.pause)
         except KeyboardInterrupt:
             self._stop.set()
-            canvas.Clear()
-            matrix.SwapOnVSync(canvas)
+            renderer.clear()
 
 
 def _create_adapter(config: AppConfig):

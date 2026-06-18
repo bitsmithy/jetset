@@ -19,102 +19,87 @@ class TestBdfFont:
         assert font.CharacterWidth(ord("A")) == 5  # ty: ignore[invalid-argument-type]
 
 
-class TestRenderFlightCard:
+def _renderer(logo_dir: str = "logos"):
+    """A Renderer backed by an emulator matrix, for tests."""
+    from RGBMatrixEmulator import RGBMatrix, RGBMatrixOptions
+
+    from jetset.renderer import Renderer
+
+    options = RGBMatrixOptions()
+    options.cols = 64
+    options.rows = 32
+    return Renderer(RGBMatrix(options=options), Path(logo_dir))
+
+
+class TestFlightCard:
     def test_clears_canvas_before_drawing(self) -> None:
-        from unittest.mock import MagicMock
+        from unittest.mock import patch
 
         from jetset.models import Flight
-        from jetset.renderer import render_flight_card
 
-        canvas = MagicMock()
-        canvas.width = 64
-        flight = Flight(callsign="UAL2337")
+        renderer = _renderer()
+        with patch.object(renderer._canvas, "Clear") as mock_clear:
+            renderer.flight_card(Flight(callsign="UAL2337"))
 
-        render_flight_card(canvas, flight, Path("logos"))
-
-        assert canvas.Clear.called
+        mock_clear.assert_called()
 
     def test_each_row_uses_its_palette_colour(self) -> None:
         # Each row is drawn in its own palette colour.
-        from unittest.mock import MagicMock, patch
+        from unittest.mock import patch
 
-        from jetset import renderer
+        from jetset import renderer as r
         from jetset.models import Flight
 
-        canvas = MagicMock()
-        flight = Flight(callsign="UAL2337", altitude=35000)
-
+        rnd = _renderer()
         with patch("jetset.renderer.draw_text") as mock_draw:
-            renderer.render_flight_card(canvas, flight, Path("logos"))
+            rnd.flight_card(Flight(callsign="UAL2337", altitude=35000))
 
         row_colors = [call.args[4] for call in mock_draw.call_args_list]
-        assert row_colors == [renderer.ORANGE, renderer.CYAN, renderer.GREEN, renderer.BLUE]
+        assert row_colors == [r.ORANGE, r.CYAN, r.GREEN, r.BLUE]
 
     def test_renders_all_metric_pages_without_error(self) -> None:
-        from RGBMatrixEmulator import RGBMatrix, RGBMatrixOptions
-
         from jetset.models import Flight
-        from jetset.renderer import render_flight_card
 
-        options = RGBMatrixOptions()
-        options.cols = 64
-        options.rows = 32
-        matrix = RGBMatrix(options=options)
-        canvas = matrix.CreateFrameCanvas()
-
+        renderer = _renderer()
         flight = Flight(
             callsign="UAL2337",
             altitude=35000, speed=450,
             vertical_rate=1500, track=270,
         )
-
         for page in range(4):
-            render_flight_card(canvas, flight, Path("logos"), metric_page=page)
-            canvas = matrix.SwapOnVSync(canvas)
+            renderer.flight_card(flight, page)
+            renderer.present()
 
 
-class TestRenderLogo:
+class TestLogo:
     def test_skips_missing_airline(self) -> None:
         from unittest.mock import patch
 
-        from RGBMatrixEmulator import RGBMatrix, RGBMatrixOptions
-
         from jetset.models import Flight
-        from jetset.renderer import _scaled_logo, render_logo
+        from jetset.renderer import _scaled_logo
 
-        options = RGBMatrixOptions()
-        options.cols = 64
-        options.rows = 32
-        matrix = RGBMatrix(options=options)
-        canvas = matrix.CreateFrameCanvas()
-
+        renderer = _renderer()
         flight = Flight(callsign="UAL2337")
         with patch("jetset.renderer.load_logo", return_value=None):
             _scaled_logo.cache_clear()  # so the patched load_logo is used
-            render_logo(canvas, flight, Path("logos"))  # no crash
+            renderer._logo(flight)  # no crash
+        _scaled_logo.cache_clear()
 
     def test_draws_pixels_for_known_airline(self) -> None:
         from unittest.mock import patch
 
         from PIL import Image
-        from RGBMatrixEmulator import RGBMatrix, RGBMatrixOptions
 
         from jetset.models import Flight
-        from jetset.renderer import LOGO_WIDTH, _scaled_logo, render_logo
+        from jetset.renderer import LOGO_WIDTH, _scaled_logo
 
         test_logo = Image.new("RGB", (LOGO_WIDTH, 20), (255, 0, 0))
-
-        options = RGBMatrixOptions()
-        options.cols = 64
-        options.rows = 32
-        matrix = RGBMatrix(options=options)
-        canvas = matrix.CreateFrameCanvas()
-
+        renderer = _renderer()
         flight = Flight(callsign="UAL2337", aircraft="B738")
         with patch("jetset.renderer.load_logo", return_value=test_logo):
             _scaled_logo.cache_clear()  # so the patched load_logo is used
-            with patch.object(canvas, "SetPixel") as mock_setpixel:
-                render_logo(canvas, flight, Path("logos"))
+            with patch.object(renderer._canvas, "SetPixel") as mock_setpixel:
+                renderer._logo(flight)
         _scaled_logo.cache_clear()
 
         mock_setpixel.assert_called()

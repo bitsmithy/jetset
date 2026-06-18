@@ -1,6 +1,7 @@
 """Tests for the main loop."""
 
-from unittest.mock import MagicMock, patch
+import time
+from unittest.mock import patch
 
 from jetset.config import AppConfig
 from jetset.models import Flight
@@ -135,82 +136,49 @@ class TestAppCurrentFrame:
         assert app._current_frame() is None
 
 
-class TestAppRenderFrame:
-    def test_renders_and_advances_frame(self) -> None:
-        from jetset.app import App
+class TestAppLoop:
+    def _run_once(self, app):
+        """Run App.loop for one iteration; sleep raises to break out cleanly.
 
-        config = AppConfig()
-        app = App(config)
-        app.frame = 3
-
-        mock_matrix = MagicMock()
-        mock_canvas = MagicMock()
-        frame = app.Frame(Flight(callsign="UAL2337"), 1)
-
+        last_fetch is set so the background fetch thread stays off the network
+        for the duration of the test.
+        """
+        app.last_fetch = time.time()
         with (
-            patch("jetset.app.render_flight_card") as mock_render,
-            patch("jetset.app.time.sleep"),
+            patch("jetset.app.build_matrix"),
+            patch("jetset.app.Renderer") as mock_renderer,
+            patch("jetset.app.time.sleep", side_effect=KeyboardInterrupt),
         ):
-            app._render_frame(mock_matrix, mock_canvas, frame)
+            app.loop()
+        return mock_renderer.return_value
 
-        mock_render.assert_called_once_with(
-            mock_canvas, frame.flight, app.logo_dir, frame.metric_page
-        )
-        mock_matrix.SwapOnVSync.assert_called_once_with(mock_canvas)
-        assert app.frame == 4
-
-    def test_returns_swapped_canvas_for_next_frame(self) -> None:
+    def test_renders_flight_card_and_advances_frame(self) -> None:
         from jetset.app import App
 
         app = App(AppConfig())
-        mock_matrix = MagicMock()
-        mock_canvas = MagicMock()
-        frame = app.Frame(Flight(callsign="UAL2337"), 1)
+        app.buffer.set_all([Flight(callsign="UAL2337")])
 
-        with (
-            patch("jetset.app.render_flight_card"),
-            patch("jetset.app.time.sleep"),
-        ):
-            next_canvas = app._render_frame(mock_matrix, mock_canvas, frame)
+        renderer = self._run_once(app)
 
-        # SwapOnVSync hands back the now-offscreen buffer; the next frame must
-        # be drawn into it, not into the canvas we just displayed.
-        assert next_canvas is mock_matrix.SwapOnVSync.return_value
+        renderer.flight_card.assert_called_once_with(Flight(callsign="UAL2337"), 0)
+        renderer.present.assert_called_once()
+        assert app.frame == 1
 
-
-class TestAppLoading:
     def test_renders_loading_when_buffer_empty(self) -> None:
         from jetset.app import App
 
-        config = AppConfig()
-        app = App(config)
-        app.frame = 0
+        renderer = self._run_once(App(AppConfig()))
 
-        mock_matrix = MagicMock()
-        mock_canvas = MagicMock()
-
-        with (
-            patch("jetset.app.render_loading") as mock_render,
-            patch("jetset.app.time.sleep"),
-        ):
-            next_canvas = app._render_loading(mock_matrix, mock_canvas)
-
-        mock_render.assert_called_once_with(mock_canvas, 0)
-        mock_matrix.SwapOnVSync.assert_called_once_with(mock_canvas)
-        assert app.frame == 1
-        assert next_canvas is mock_matrix.SwapOnVSync.return_value
+        renderer.loading.assert_called_once_with(0)
+        renderer.present.assert_called_once()
 
     def test_loading_animation_cycles_with_frame(self) -> None:
         from jetset.app import App
 
-        app = App(AppConfig())
+        app = App(AppConfig())  # empty buffer
         app.frame = 5  # past the first cycle — must wrap, not freeze on "LOADING"
 
-        with (
-            patch("jetset.app.render_loading") as mock_render,
-            patch("jetset.app.time.sleep"),
-        ):
-            app._render_loading(MagicMock(), MagicMock())
+        renderer = self._run_once(app)
 
         # 5 % 4 == 1 → "LOADING." so the dots keep animating
-        assert mock_render.call_args.args[1] == 1
+        renderer.loading.assert_called_once_with(1)
