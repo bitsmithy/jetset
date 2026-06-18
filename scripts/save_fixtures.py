@@ -13,6 +13,10 @@ import os
 import sys
 from dataclasses import dataclass
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from jetset.config import AppConfig
 from jetset.fetcher import AirLabsAdapter
 

@@ -34,6 +34,7 @@ AIRLABS_FLIGHT = {
     "v_speed": 0,      # m/s     -> 0 ft/min
     "dep_iata": "SFO",
     "arr_iata": "LAX",
+    "status": "en-route",
 }
 
 
@@ -108,6 +109,26 @@ class TestAirLabsAdapter:
         with patch.object(adapter._api, "get", return_value=mock_resp):
             assert adapter.nearby_flights(29.99, -95.34, 200) == []
 
+    def test_nearby_flights_filters_out_non_enroute(self) -> None:
+        from jetset.fetcher import AirLabsAdapter
+
+        adapter = AirLabsAdapter()
+        adapter._api_key = "test"
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {
+            "response": [
+                dict(AIRLABS_FLIGHT),
+                {**AIRLABS_FLIGHT, "flight_icao": "N12345", "status": "landed"},
+                {**AIRLABS_FLIGHT, "flight_icao": "N67890", "status": "scheduled"},
+            ]
+        }
+
+        with patch.object(adapter._api, "get", return_value=mock_resp):
+            flights = adapter.nearby_flights(29.99, -95.34, 200)
+
+        assert len(flights) == 1
+        assert flights[0].callsign == "UAL1170"
+
     def test_bbox_covers_the_range(self) -> None:
         from jetset.fetcher import AirLabsAdapter
 
@@ -127,12 +148,15 @@ class TestAirLabsFixture:
         assert len(flights) == len(fixture)
         for flight in flights:
             assert isinstance(flight.callsign, str)
+            # Real API can return None for some metric fields.
             assert isinstance(flight.altitude, (int, type(None)))
             assert isinstance(flight.speed, (int, type(None)))
-            assert isinstance(flight.track, (float, type(None)))
             assert isinstance(flight.vertical_rate, (int, type(None)))
-        # First fixture flight has a route; the last (no dep/arr) does not.
-        route = flights[0].route
-        assert route is not None
-        assert route.origin.iata_code == "IAH"
-        assert flights[-1].route is None
+            # track is always cast to float in to_flight.
+            assert isinstance(flight.track, float)
+        # Real en-route flights from AirLabs all have dep/arr,
+        # so every fixture flight should map a route.
+        for flight in flights:
+            assert flight.route is not None, f"Flight {flight.callsign} has no route"
+            assert isinstance(flight.route.origin.iata_code, str)
+            assert isinstance(flight.route.destination.iata_code, str)

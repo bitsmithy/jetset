@@ -43,9 +43,9 @@ class AirLabsAdapter(FlightAPI):
     interval — one bbox call per refresh.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, api_key: str | None = None) -> None:
         self._api = RequestsAPI("https://airlabs.co/api/v9")
-        self._api_key = os.environ.get("AIRLABS_API_KEY")
+        self._api_key = api_key or os.environ.get("AIRLABS_API_KEY")
 
     @staticmethod
     def _bbox(lat: float, lon: float, range_nm: float) -> str:
@@ -65,7 +65,7 @@ class AirLabsAdapter(FlightAPI):
             route=route,
             altitude=_meters_to_feet(data.get("alt")),
             speed=_kmh_to_knots(data.get("speed")),
-            track=data.get("dir"),
+            track=float(data.get("dir")) if data.get("dir") is not None else None,
             vertical_rate=_ms_to_ft_per_min(data.get("v_speed")),
         )
 
@@ -88,7 +88,11 @@ class AirLabsAdapter(FlightAPI):
                 detail = body.get("error") if isinstance(body, dict) else body
                 logger.warning("AirLabs returned no usable data: %s", detail)
                 return []
-            raw_flights = [f for f in (body.get("response") or []) if f.get("flight_icao")]
+            raw_flights = [
+                f
+                for f in (body.get("response") or [])
+                if f.get("flight_icao") and f.get("status") == "en-route"
+            ]
             if raw:
                 return raw_flights
             return [self.to_flight(f) for f in raw_flights]
