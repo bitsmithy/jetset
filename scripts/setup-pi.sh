@@ -68,8 +68,13 @@ else
     echo "=== rgbmatrix wheel already built ==="
 fi
 
-# 6. Download airline logos (cached in ~/.cache/jetset/logos; skips existing)
+# 6. Download airline logos into the global cache (AppConfig.logo_dir =
+# /var/lib/jetset/logos). Owned by the deploy user so this download can write;
+# the root service only reads. A global dir means root and the deploy user
+# resolve the same path — no per-home/JETSET_LOGO_DIR juggling.
 echo "=== Downloading airline logos ==="
+sudo mkdir -p /var/lib/jetset/logos
+sudo chown "$(whoami):$(whoami)" /var/lib/jetset/logos
 uv run python scripts/download_logos.py || echo "(logo download incomplete — re-run later)"
 
 # 7. Install + enable the systemd service (runs on boot)

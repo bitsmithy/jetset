@@ -11,7 +11,8 @@ test:  ## Run all tests
 	uv run pytest -v
 
 lint:  ## Lint and format check
-	uv run ruff check src/
+	uv run ruff check .
+	uv run ty check .
 
 fixtures: ## Save a live AirLabs response as a test fixture
 	uv run python scripts/save_fixtures.py

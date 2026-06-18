@@ -1,6 +1,7 @@
 import logging
 import threading
 import time
+from pathlib import Path
 from typing import NamedTuple
 
 from RGBMatrixEmulator.emulation.canvas import Canvas
@@ -27,6 +28,7 @@ class App:
 
     def __init__(self, config: AppConfig) -> None:
         self.config = config
+        self.logo_dir = Path(config.logo_dir)
         self.buffer = FlightBuffer()
         self.frame = 0
         self.last_fetch: float | None = None
@@ -118,7 +120,7 @@ class App:
 
     def _render_frame(self, matrix: RGBMatrix, canvas: Canvas, frame: Frame) -> Canvas:
         flight, metric_page = frame
-        render_flight_card(canvas, flight, metric_page)
+        render_flight_card(canvas, flight, self.logo_dir, metric_page)
         return self._after_render(matrix, canvas)
 
     def _render_loading(self, matrix: RGBMatrix, canvas: Canvas) -> Canvas:

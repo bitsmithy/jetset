@@ -14,7 +14,9 @@ class TestBdfFont:
         font = graphics.Font()
         font.LoadFont(str(Path("fonts/5x7.bdf").resolve()))
         assert font.height == 7
-        assert font.CharacterWidth(ord("A")) == 5
+        # ord() gives the codepoint int the real rpi-rgb-led-matrix API wants;
+        # the emulator stub mistypes the param as str.
+        assert font.CharacterWidth(ord("A")) == 5  # ty: ignore[invalid-argument-type]
 
 
 class TestRenderFlightCard:
@@ -28,7 +30,7 @@ class TestRenderFlightCard:
         canvas.width = 64
         flight = Flight(callsign="UAL2337")
 
-        render_flight_card(canvas, flight)
+        render_flight_card(canvas, flight, Path("logos"))
 
         assert canvas.Clear.called
 
@@ -43,7 +45,7 @@ class TestRenderFlightCard:
         flight = Flight(callsign="UAL2337", altitude=35000)
 
         with patch("jetset.renderer.draw_text") as mock_draw:
-            renderer.render_flight_card(canvas, flight)
+            renderer.render_flight_card(canvas, flight, Path("logos"))
 
         row_colors = [call.args[4] for call in mock_draw.call_args_list]
         assert row_colors == [renderer.ORANGE, renderer.CYAN, renderer.GREEN, renderer.BLUE]
@@ -67,7 +69,7 @@ class TestRenderFlightCard:
         )
 
         for page in range(4):
-            render_flight_card(canvas, flight, metric_page=page)
+            render_flight_card(canvas, flight, Path("logos"), metric_page=page)
             canvas = matrix.SwapOnVSync(canvas)
 
 
@@ -89,7 +91,7 @@ class TestRenderLogo:
         flight = Flight(callsign="UAL2337")
         with patch("jetset.renderer.load_logo", return_value=None):
             _scaled_logo.cache_clear()  # so the patched load_logo is used
-            render_logo(canvas, flight)  # no crash
+            render_logo(canvas, flight, Path("logos"))  # no crash
 
     def test_draws_pixels_for_known_airline(self) -> None:
         from unittest.mock import patch
@@ -112,7 +114,7 @@ class TestRenderLogo:
         with patch("jetset.renderer.load_logo", return_value=test_logo):
             _scaled_logo.cache_clear()  # so the patched load_logo is used
             with patch.object(canvas, "SetPixel") as mock_setpixel:
-                render_logo(canvas, flight)
+                render_logo(canvas, flight, Path("logos"))
         _scaled_logo.cache_clear()
 
         mock_setpixel.assert_called()

@@ -12,9 +12,11 @@ class TestLoadingLabel:
 
 class TestLogo:
     def test_returns_none_for_missing_airline(self) -> None:
+        from pathlib import Path
+
         from jetset.display import load_logo
 
-        assert load_logo("NONEXIST") is None
+        assert load_logo("NONEXIST", Path("/nonexistent")) is None
 
 
 class TestFlightLabel:
