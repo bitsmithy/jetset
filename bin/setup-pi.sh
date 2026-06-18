@@ -77,7 +77,34 @@ sudo mkdir -p /var/lib/jetset/logos
 sudo chown "$(whoami):$(whoami)" /var/lib/jetset/logos
 uv run python scripts/download_logos.py || echo "(logo download incomplete — re-run later)"
 
-# 7. Install + enable the systemd service (runs on boot)
+# 7. Reduce LED panel flicker. Two causes, both fixed here (idempotent; both
+# take effect on the next reboot):
+#   a) Onboard sound: the Adafruit HAT drives the panel's PWM timing on the
+#      same hardware snd_bcm2835 uses, so leaving sound enabled is the most
+#      common flicker source. Blacklist the module and turn audio off.
+#   b) CPU contention: the matrix refresh thread runs on core 3; isolating it
+#      (isolcpus=3) stops the scheduler from interrupting it with other work.
+echo "=== Reducing LED flicker (disable sound, isolate core 3) ==="
+echo "blacklist snd_bcm2835" | sudo tee /etc/modprobe.d/blacklist-rgb-matrix.conf >/dev/null
+
+BOOT_CONFIG=/boot/firmware/config.txt
+[ -f "$BOOT_CONFIG" ] || BOOT_CONFIG=/boot/config.txt
+if [ -f "$BOOT_CONFIG" ]; then
+    if grep -q "^dtparam=audio=on" "$BOOT_CONFIG"; then
+        sudo sed -i "s/^dtparam=audio=on/dtparam=audio=off/" "$BOOT_CONFIG"
+    elif ! grep -q "^dtparam=audio=off" "$BOOT_CONFIG"; then
+        echo "dtparam=audio=off" | sudo tee -a "$BOOT_CONFIG" >/dev/null
+    fi
+fi
+
+# cmdline.txt must stay a single line; append isolcpus to line 1 only if absent.
+BOOT_CMDLINE=/boot/firmware/cmdline.txt
+[ -f "$BOOT_CMDLINE" ] || BOOT_CMDLINE=/boot/cmdline.txt
+if [ -f "$BOOT_CMDLINE" ] && ! grep -q "isolcpus=" "$BOOT_CMDLINE"; then
+    sudo sed -i "1 s/\$/ isolcpus=3/" "$BOOT_CMDLINE"
+fi
+
+# 8. Install + enable the systemd service (runs on boot)
 echo "=== Installing jetset systemd service ==="
 bash bin/install-service.sh
 sudo systemctl restart jetset
@@ -85,3 +112,4 @@ sudo systemctl restart jetset
 echo "=== Setup complete! The jetset service is enabled and running. ==="
 echo "    Logs:  journalctl -u jetset -f"
 echo "    (foreground debug run: \`make debug-pi\` — stop the service first)"
+echo "    NOTE: reboot once to apply the sound/flicker fix: sudo reboot"
