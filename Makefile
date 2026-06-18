@@ -34,6 +34,9 @@ deploy: ## rsync to the Pi, run first-time setup if needed, restart the service
 		 bash bin/install-service.sh && \
 		 sudo systemctl restart jetset"
 
+ssh:
+		ssh -t $(JETSET_USER)@$(JETSET_HOST) "cd $(JETSET_PATH)/ && exec $$SHELL -l"
+
 setup-pi: ## Install deps and build rpi-rgb-led-matrix (run on the Pi)
 	bash bin/setup-pi.sh
 
