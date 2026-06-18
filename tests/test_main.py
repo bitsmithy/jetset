@@ -98,6 +98,7 @@ class TestAppCurrentFrame:
             for frame_idx in range(8):
                 app.frame = frame_idx
                 result = app._current_frame()
+                assert result is not None
                 frames.append((result.flight.callsign, result.metric_page))
 
         assert frames == [
@@ -115,11 +116,17 @@ class TestAppCurrentFrame:
 
         # slide_interval = 2700 / 10 = 270s; one slide advances window_start by 1.
         with patch("jetset.app.time.time", return_value=0.0):
-            assert app._current_frame().flight.callsign == "0"
+            frame = app._current_frame()
+            assert frame is not None
+            assert frame.flight.callsign == "0"
         with patch("jetset.app.time.time", return_value=270.0):
-            assert app._current_frame().flight.callsign == "1"
+            frame = app._current_frame()
+            assert frame is not None
+            assert frame.flight.callsign == "1"
         with patch("jetset.app.time.time", return_value=540.0):
-            assert app._current_frame().flight.callsign == "2"
+            frame = app._current_frame()
+            assert frame is not None
+            assert frame.flight.callsign == "2"
 
     def test_empty_buffer_returns_none(self) -> None:
         from jetset.app import App
@@ -146,7 +153,9 @@ class TestAppRenderFrame:
         ):
             app._render_frame(mock_matrix, mock_canvas, frame)
 
-        mock_render.assert_called_once_with(mock_canvas, frame.flight, frame.metric_page)
+        mock_render.assert_called_once_with(
+            mock_canvas, frame.flight, app.logo_dir, frame.metric_page
+        )
         mock_matrix.SwapOnVSync.assert_called_once_with(mock_canvas)
         assert app.frame == 4
 

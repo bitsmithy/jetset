@@ -49,8 +49,10 @@ class TestAirLabsAdapter:
         assert flight.speed == 335       # km/h -> knots
         assert flight.track == 140.0
         assert flight.vertical_rate == 0
-        assert flight.route.origin.iata_code == "SFO"
-        assert flight.route.destination.iata_code == "LAX"
+        route = flight.route
+        assert route is not None
+        assert route.origin.iata_code == "SFO"
+        assert route.destination.iata_code == "LAX"
 
     def test_to_flight_no_route_when_endpoints_missing(self) -> None:
         from jetset.fetcher import AirLabsAdapter
@@ -71,7 +73,9 @@ class TestAirLabsAdapter:
 
         assert len(flights) == 1
         assert flights[0].callsign == "UAL1170"
-        assert flights[0].route.destination.iata_code == "LAX"
+        route = flights[0].route
+        assert route is not None
+        assert route.destination.iata_code == "LAX"
 
     def test_nearby_flights_raw_returns_dicts(self) -> None:
         from jetset.fetcher import AirLabsAdapter
@@ -128,5 +132,7 @@ class TestAirLabsFixture:
             assert isinstance(flight.track, (float, type(None)))
             assert isinstance(flight.vertical_rate, (int, type(None)))
         # First fixture flight has a route; the last (no dep/arr) does not.
-        assert flights[0].route.origin.iata_code == "IAH"
+        route = flights[0].route
+        assert route is not None
+        assert route.origin.iata_code == "IAH"
         assert flights[-1].route is None

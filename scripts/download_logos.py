@@ -1,15 +1,17 @@
 """Download airline logos from the Jxck-S/airline-logos repository.
 
 RadarBox is the preferred set; FlightAware fills the gaps RadarBox is missing
-(e.g. ASA). Logos are cached in ~/.cache/jetset/logos/ as {ICAO}.png files; a
-file already present (from a higher-priority source) is never overwritten.
+(e.g. ASA). Logos are cached in AppConfig.logo_dir as {ICAO}.png files; a file
+already present (from a higher-priority source) is never overwritten.
 """
 
 import json
+import os
 import urllib.error
 import urllib.request
+from pathlib import Path
 
-from jetset.display import LOGO_DIR
+from jetset.config import AppConfig
 
 # (GitHub contents API, raw base) per source, in PRIORITY order — earlier
 # sources win because the download skips files that already exist locally.
@@ -25,6 +27,11 @@ SOURCES = [
 ]
 
 
+def _logo_dir() -> Path:
+    """The configured logo cache directory."""
+    return Path(AppConfig.load(os.environ.get("JETSET_CONFIG")).logo_dir)
+
+
 def _fetch_logo_list(api_url: str) -> list[str]:
     """Fetch the list of PNG logo filenames from a GitHub contents API URL."""
     with urllib.request.urlopen(api_url) as resp:
@@ -32,11 +39,11 @@ def _fetch_logo_list(api_url: str) -> list[str]:
     return [e["name"] for e in entries if e["name"].endswith(".png")]
 
 
-def _download_missing(filenames: list[str], raw_base: str) -> int:
-    """Download each filename from raw_base into LOGO_DIR, skipping existing."""
+def _download_missing(filenames: list[str], raw_base: str, dest_dir: Path) -> int:
+    """Download each filename from raw_base into dest_dir, skipping existing."""
     count = 0
     for name in filenames:
-        dest = LOGO_DIR / name
+        dest = dest_dir / name
         if dest.exists():
             continue
         try:
@@ -48,7 +55,7 @@ def _download_missing(filenames: list[str], raw_base: str) -> int:
 
 
 def download_logos(icao_codes: list[str] | None = None) -> int:
-    """Download airline logos to LOGO_DIR, preferring earlier SOURCES.
+    """Download airline logos to the configured logo dir, preferring earlier SOURCES.
 
     Args:
         icao_codes: Optional ICAO codes to fetch. If None, every logo each
@@ -58,16 +65,17 @@ def download_logos(icao_codes: list[str] | None = None) -> int:
     Returns:
         Number of logos newly downloaded.
     """
-    LOGO_DIR.mkdir(parents=True, exist_ok=True)
+    dest_dir = _logo_dir()
+    dest_dir.mkdir(parents=True, exist_ok=True)
     explicit = [f"{code}.png" for code in icao_codes] if icao_codes is not None else None
 
     total = 0
     for api_url, raw_base in SOURCES:
         filenames = explicit if explicit is not None else _fetch_logo_list(api_url)
-        total += _download_missing(filenames, raw_base)
+        total += _download_missing(filenames, raw_base, dest_dir)
     return total
 
 
 if __name__ == "__main__":
     count = download_logos()
-    print(f"Downloaded {count} airline logos to {LOGO_DIR}")
+    print(f"Downloaded {count} airline logos to {_logo_dir()}")

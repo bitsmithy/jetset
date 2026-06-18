@@ -2,7 +2,6 @@
 
 import os
 from pathlib import Path
-from typing import ClassVar
 
 import requests
 
@@ -34,7 +33,7 @@ class RequestsAPI(requests.Session):
     the scheme and hostname.
     """
 
-    base_url: ClassVar[str | None] = None
+    base_url: str | None = None
 
     def __init__(
         self, base_url: str | None = None, headers: dict[str, str] | None = None, *args, **kwargs

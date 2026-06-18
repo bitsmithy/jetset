@@ -27,7 +27,9 @@ import requests
 try:
     from dotenv import load_dotenv
 except ImportError:  # dotenv is a convenience; env vars work without it
-    load_dotenv = None
+
+    def load_dotenv(*_args, **_kwargs) -> bool:  # no-op fallback
+        return False
 
 from jetset.config import AppConfig
 from jetset.fetcher import AirLabsAdapter
@@ -110,8 +112,7 @@ def render_table(rows: list[tuple[str, ...]], headers: tuple[str, ...]) -> None:
 
 
 def main() -> None:
-    if load_dotenv is not None:
-        load_dotenv()  # load API keys from a .env file if present
+    load_dotenv()  # load API keys from a .env file if present
 
     # AeroAPI costs money, so it is opt-in only. Default run uses free sources.
     use_truth = "--truth" in sys.argv
@@ -140,6 +141,7 @@ def main() -> None:
     hexdb = RequestsAPI(base_url=HEXDB_BASE)
     aero = None
     if use_truth:
+        assert truth_key is not None  # guaranteed by the use_truth check above
         aero = RequestsAPI(base_url=AEROAPI_BASE, headers={"x-apikey": truth_key})
 
     rows = []
@@ -147,6 +149,7 @@ def main() -> None:
         ours = our_route(flight)
         hex_route = hexdb_route(hexdb, flight.callsign)
         if use_truth:
+            assert aero is not None
             truth = aeroapi_route(aero, flight.callsign)
             rows.append((flight.callsign, ours, truth, hex_route, agree(ours, truth)))
         else:

@@ -1,16 +1,10 @@
 """Display formatting functions for flight cards on the LED panel."""
 
-import os
 from pathlib import Path
 
 from PIL import Image
 
 from jetset.models import Flight
-
-# Where airline logos live. Overridable via JETSET_LOGO_DIR because the systemd
-# service runs as root (so Path.home() would be /root), while download_logos.py
-# runs as the deploy user — the unit points both at the same dir.
-LOGO_DIR = Path(os.environ.get("JETSET_LOGO_DIR") or Path.home() / ".cache" / "jetset" / "logos")
 
 _COMPASS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
 
@@ -20,14 +14,14 @@ def _cardinal(track: float) -> str:
     return _COMPASS[int(track / 45 + 0.5) % 8]
 
 
-def load_logo(airline_code: str) -> Image.Image | None:
-    """Load the airline logo for a given ICAO airline code.
+def load_logo(airline_code: str, logo_dir: Path) -> Image.Image | None:
+    """Load the airline logo for a given ICAO airline code from logo_dir.
 
-    Looks for {airline_code}.png in LOGO_DIR. Returns the image
-    unchanged (caller is responsible for scaling and blitting).
-    Returns None if the file doesn't exist or can't be opened.
+    Looks for {airline_code}.png in logo_dir. Returns the image unchanged
+    (caller is responsible for scaling and blitting). Returns None if the file
+    doesn't exist or can't be opened.
     """
-    path = LOGO_DIR / f"{airline_code}.png"
+    path = logo_dir / f"{airline_code}.png"
     try:
         return Image.open(path)
     except (FileNotFoundError, PermissionError):

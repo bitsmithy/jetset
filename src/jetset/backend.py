@@ -14,7 +14,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 try:
-    from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
+    # rgbmatrix is installed only on the Pi; on the dev box (where ty runs) it's
+    # absent and the except below falls back to the emulator, so an unresolved
+    # import here is expected — not a bug.
+    from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics  # ty: ignore[unresolved-import]
 
     IS_HARDWARE = True
 except ImportError as exc:
@@ -49,7 +52,10 @@ def build_matrix() -> RGBMatrix:
     options.rows = DISPLAY_HEIGHT
     if IS_HARDWARE:
         options.hardware_mapping = "adafruit-hat"
-        options.drop_privileges = False
+        # drop_privileges exists on the real rpi-rgb-led-matrix RGBMatrixOptions
+        # (and is set only here, under IS_HARDWARE), but not on the emulator stub
+        # ty resolves to off-hardware — hence the ignore.
+        options.drop_privileges = False  # ty: ignore[invalid-assignment]
     return RGBMatrix(options=options)
 
 
