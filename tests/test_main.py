@@ -89,7 +89,7 @@ class TestAppCurrentFrame:
     def test_cycles_window_flights_through_metric_pages(self) -> None:
         from jetset.app import App
 
-        app = App(AppConfig())
+        app = App(AppConfig(cycles_per_flight=1))
         app.buffer.set_all([Flight(callsign="UAL2337"), Flight(callsign="SWA45")])
         app.last_fetch = 1000.0
 
@@ -110,7 +110,7 @@ class TestAppCurrentFrame:
     def test_window_slides_by_one_each_cycle(self) -> None:
         from jetset.app import App
 
-        app = App(AppConfig())
+        app = App(AppConfig(cycles_per_flight=1))
         app.buffer.set_all([Flight(callsign=str(i)) for i in range(10)])
         app.last_fetch = 0.0
 

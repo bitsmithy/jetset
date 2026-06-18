@@ -33,6 +33,20 @@ def _ms_to_ft_per_min(ms: float | None) -> int | None:
     return round(ms * 196.850394) if ms is not None else None
 
 
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Great-circle distance between two points in km."""
+    R = 6371
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = (
+        math.sin(dlat / 2) ** 2
+        + math.cos(math.radians(lat1))
+        * math.cos(math.radians(lat2))
+        * math.sin(dlon / 2) ** 2
+    )
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
 class AirLabsAdapter(FlightAPI):
     """Single data source for the display.
 
@@ -93,6 +107,13 @@ class AirLabsAdapter(FlightAPI):
                 for f in (body.get("response") or [])
                 if f.get("flight_icao") and f.get("status") == "en-route"
             ]
+            # Sort by proximity to home so the display shows the closest
+            # flights first. Flights without coordinates go to the end.
+            raw_flights.sort(
+                key=lambda f: _haversine_km(lat, lon, f.get("lat", 0), f.get("lng", 0))
+                if f.get("lat") is not None and f.get("lng") is not None
+                else float("inf")
+            )
             if raw:
                 return raw_flights
             return [self.to_flight(f) for f in raw_flights]
