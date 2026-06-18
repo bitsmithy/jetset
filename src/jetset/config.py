@@ -5,11 +5,12 @@ import yaml
 
 @dataclass(frozen=True)
 class AppConfig:
-    # IAH
-    home_lat: float = 29.9931
-    home_lon: float = -95.3416
-    range: int = 200
-    pause: int = 2
+    # HEB
+    home_lat: float = 30.0689232902742
+    home_lon: float = -95.25178382821562
+    range: int = 100  # in km
+    pause: int = 5  # how long in seconds to wait between cycling through the pages of a flight
+    cycles_per_flight: int = 2  # how many times to show all details per flight
     refresh: int = 2700  # 45 min — one AirLabs bbox call per refresh ≈ 960/month
     api_source: str = "airlabs"
     # Where airline logos are cached. A global path (not a user home) so the
