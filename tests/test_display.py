@@ -120,13 +120,27 @@ class TestMetricsLabel:
         label = metrics_label(flight, page=3)
         assert label == "280°W"
 
-    def test_four_pages_rotates(self) -> None:
+    def test_five_pages_rotates(self) -> None:
         from jetset.display import metrics_label
 
         flight = Flight(
             callsign="UAL2337",
             altitude=35000, speed=450,
             vertical_rate=1500, track=270,
+            distance_km=42,
         )
-        labels = [metrics_label(flight, page=i) for i in range(4)]
-        assert len(set(labels)) == 4  # all different
+        labels = [metrics_label(flight, page=i) for i in range(5)]
+        assert len(set(labels)) == 5  # all different
+
+    def test_page_4_shows_distance(self) -> None:
+        from jetset.display import metrics_label
+
+        flight = Flight(callsign="UAL2337", distance_km=42)
+        label = metrics_label(flight, page=4)
+        assert label == "42km away"
+
+    def test_page_4_empty_when_no_distance(self) -> None:
+        from jetset.display import metrics_label
+
+        flight = Flight(callsign="UAL2337")
+        assert metrics_label(flight, page=4) == ""

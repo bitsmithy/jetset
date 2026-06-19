@@ -96,15 +96,15 @@ class TestAppCurrentFrame:
         frames: list[tuple[str, int]] = []
         # elapsed == 0 → window_start == 0, so the window is [UAL2337, SWA45].
         with patch("jetset.app.time.time", return_value=1000.0):
-            for frame_idx in range(8):
+            for frame_idx in range(10):
                 app.frame = frame_idx
                 result = app._current_frame()
                 assert result is not None
                 frames.append((result.flight.callsign, result.metric_page))
 
         assert frames == [
-            ("UAL2337", 0), ("UAL2337", 1), ("UAL2337", 2), ("UAL2337", 3),
-            ("SWA45", 0), ("SWA45", 1), ("SWA45", 2), ("SWA45", 3),
+            ("UAL2337", 0), ("UAL2337", 1), ("UAL2337", 2), ("UAL2337", 3), ("UAL2337", 4),
+            ("SWA45", 0), ("SWA45", 1), ("SWA45", 2), ("SWA45", 3), ("SWA45", 4),
         ]
 
     def test_window_slides_by_one_each_cycle(self) -> None:
@@ -114,19 +114,19 @@ class TestAppCurrentFrame:
         app.buffer.set_all([Flight(callsign=str(i)) for i in range(10)])
         app.last_fetch = 0.0
 
-        # Each cycle = PAGES_PER_FLIGHT * WINDOW_SIZE = 4 * 5 = 20 frames.
+        # Each cycle = PAGES_PER_FLIGHT * WINDOW_SIZE = 5 * 5 = 25 frames.
         # After one cycle the window slides by 1.
         app.frame = 0
         frame = app._current_frame()
         assert frame is not None
         assert frame.flight.callsign == "0"
 
-        app.frame = 20
+        app.frame = 25
         frame = app._current_frame()
         assert frame is not None
         assert frame.flight.callsign == "1"
 
-        app.frame = 40
+        app.frame = 50
         frame = app._current_frame()
         assert frame is not None
         assert frame.flight.callsign == "2"
@@ -178,9 +178,9 @@ class TestAppLoop:
         from jetset.app import App
 
         app = App(AppConfig())  # empty buffer
-        app.frame = 5  # past the first cycle — must wrap, not freeze on "LOADING"
+        app.frame = 6  # past the first cycle — must wrap, not freeze on "LOADING"
 
         renderer = self._run_once(app)
 
-        # 5 % 4 == 1 → "LOADING." so the dots keep animating
+        # 6 % 5 == 1 → "LOADING." so the dots keep animating
         renderer.loading.assert_called_once_with(1)

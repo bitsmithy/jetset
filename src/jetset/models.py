@@ -13,6 +13,7 @@ class Flight:
     speed: int | None = None
     track: float | None = None
     vertical_rate: int | None = None
+    distance_km: float | None = None
 
     def __post_init__(self) -> None:
         logger.debug(

@@ -35,7 +35,7 @@ def _ms_to_ft_per_min(ms: float | None) -> int | None:
 
 def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Great-circle distance between two points in km."""
-    R = 6371
+    r = 6371
     dlat = math.radians(lat2 - lat1)
     dlon = math.radians(lon2 - lon1)
     a = (
@@ -44,7 +44,7 @@ def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
         * math.cos(math.radians(lat2))
         * math.sin(dlon / 2) ** 2
     )
-    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return r * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
 class AirLabsAdapter(FlightAPI):
@@ -69,18 +69,30 @@ class AirLabsAdapter(FlightAPI):
         return f"{lat - half_lat},{lon - half_lon},{lat + half_lat},{lon + half_lon}"
 
     @staticmethod
-    def to_flight(data: dict) -> Flight:
+    def to_flight(
+        data: dict,
+        home_lat: float | None = None,
+        home_lon: float | None = None,
+    ) -> Flight:
         """Map an AirLabs flight (metric units) to a Flight (feet/knots/ft-min)."""
         dep, arr = data.get("dep_iata"), data.get("arr_iata")
         route = FlightRoute(Airport(dep), Airport(arr)) if dep and arr else None
+        f_lat, f_lng = data.get("lat"), data.get("lng")
+        distance_km = (
+            _haversine_km(home_lat, home_lon, f_lat, f_lng)
+            if home_lat is not None and home_lon is not None
+            and f_lat is not None and f_lng is not None
+            else None
+        )
         return Flight(
             callsign=(data.get("flight_icao") or "").strip(),
             aircraft=data.get("aircraft_icao"),
             route=route,
             altitude=_meters_to_feet(data.get("alt")),
             speed=_kmh_to_knots(data.get("speed")),
-            track=float(data.get("dir")) if data.get("dir") is not None else None,
+            track=float(d) if (d := data.get("dir")) is not None else None,
             vertical_rate=_ms_to_ft_per_min(data.get("v_speed")),
+            distance_km=distance_km,
         )
 
     def nearby_flights(
@@ -116,7 +128,7 @@ class AirLabsAdapter(FlightAPI):
             )
             if raw:
                 return raw_flights
-            return [self.to_flight(f) for f in raw_flights]
+            return [self.to_flight(f, lat, lon) for f in raw_flights]
         except (requests.exceptions.RequestException, ValueError) as e:
             logger.warning("Error fetching flights from AirLabs: %s", e)
             return []
