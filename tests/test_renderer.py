@@ -65,8 +65,9 @@ class TestFlightCard:
             callsign="UAL2337",
             altitude=35000, speed=450,
             vertical_rate=1500, track=270,
+            distance_km=42,
         )
-        for page in range(4):
+        for page in range(5):
             renderer.flight_card(flight, page)
             renderer.present()
 

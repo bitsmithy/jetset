@@ -18,7 +18,7 @@ class App:
     _FETCH_POLL_SECONDS = 1.0
     # Display rotates a sliding window of this many flights; 4 metric pages each.
     WINDOW_SIZE = 5
-    PAGES_PER_FLIGHT = 4
+    PAGES_PER_FLIGHT = 5
 
     class Frame(NamedTuple):
         flight: Flight

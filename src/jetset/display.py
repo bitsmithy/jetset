@@ -27,7 +27,7 @@ def load_logo(airline_code: str, logo_dir: Path) -> Image.Image | None:
     path = logo_dir / f"{airline_code}.png"
     try:
         return Image.open(path)
-    except (FileNotFoundError, PermissionError):
+    except FileNotFoundError, PermissionError:
         return None
 
 
@@ -69,6 +69,7 @@ def metrics_label(flight: Flight, page: int = 0) -> str:
         1 = speed (e.g. "450kn")
         2 = vertical rate (e.g. "▲1500ft/min", "▼1200ft/min", or "▬0ft/min")
         3 = track (e.g. "270°W")
+        4 = distance from home (e.g. "32km away")
 
     Returns an empty string if the relevant field is missing.
     """
@@ -87,6 +88,8 @@ def metrics_label(flight: Flight, page: int = 0) -> str:
             marker = _LEVEL
         data += f"{marker}{abs(rate)}ft/min"
     elif page == 3 and flight.track is not None:
-        data += f"{int(flight.track)}\u00b0{_cardinal(flight.track)}"
+        data += f"{int(flight.track)}°{_cardinal(flight.track)}"
+    elif page == 4 and flight.distance_km is not None:
+        data += f"{round(flight.distance_km)}km away"
 
     return data
